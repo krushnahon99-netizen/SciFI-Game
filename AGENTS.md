@@ -48,13 +48,14 @@ cache-write $5 per 1M tokens):
 | One credit check, cheap way (below) | ~$0.03–0.05 |
 | One credit check, naive way (broad tool searches, listing chats, paging events) | ~$0.50 |
 
-**Estimate for free, verify rarely.** Keep a running estimate without tools:
-`spent ≈ 1.5 × (0.50 × owner messages + 0.04 × tool steps + 0.35 × (lines written / 1000))`.
-An answer to a question you asked (AskUserQuestions) counts as an owner message. The ×1.5 covers hidden
-reasoning tokens and cache rewrites: without it, the M0.1 chat estimated $3.00 left when only $1.63 was.
-Do a real check only (a) before starting a new sub-milestone, or (b) when the estimate says ≤ $1.50 left.
-**Never tell the owner a remaining balance from the estimate alone; say it's an estimate, or check.**
-At most ~4 real checks per session.
+**When to check: by time and checkpoints, never by guessing.** Cost depends on effort, length and
+complexity, so estimates are unreliable (a guess in the M0.1 chat said $3.00 left; the real number was $1.63).
+Do a real check:
+1. after every save (commit + push to `main`), and
+2. whenever **~20 min** of work has passed since the last check (**~10 min** once `left` is LOW).
+
+Track time for free: run `date -u +%H:%M` at session start, and add `; date -u +%H:%M` to Bash commands you
+already run (installs, builds). No extra steps needed. Only tell the owner a balance from a real check.
 
 **Cheap real check (v0 only):**
 1. Once per session: `tool_search_tool_bm25` with query `credit usage summary` and **`limit: 1`**.
