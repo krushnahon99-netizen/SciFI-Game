@@ -113,7 +113,7 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 - [x] **M0** — Repo, handoff docs (`AGENTS.md`), original spec (`docs/GAME_SPEC.md`), README stub.
 - [x] **M0.1** — Credit budget protocol (§0.1), sub-milestone plan, save-to-`main` rule (§7).
 - **M1 — Engine foundation**
-  - [ ] **M1a** Bootstrap: `pnpm add three @types/three`; `app/page.tsx` mounts `<EchoGame/>` (client only); `game/core/Game.ts` (init, loop, state), `core/events.ts`, `core/input.ts` (keyboard, mouse, pointer lock); `render/renderer.ts` (renderer, resize, tone mapping, stats); `render/quality.ts` (Low/Medium/High/Ultra); `ui/store.ts`; minimal HUD (FPS). Test ground + light visible.
+  - [x] **M1a** Bootstrap (three r186). `EchoGame` lazy-imports the engine client-side; `Game.ts` loop + phase machine (`playing`/`paused`, pause on pointer-lock loss); `input.ts` (actions by `KeyboardEvent.code`, pointer lock with automatic drag-to-look fallback for sandboxed iframes, virtual API for touch); `renderer.ts` (ACES, PCF shadows, EffectComposer bloom with MSAA target, GPU name + software-GPU detection → Low); `quality.ts` presets; `settings.ts`/`storage.ts` (localStorage + memory fallback); `ui/store.ts` + `useUI`; HUD (FPS chip, F3 stats), boot overlay, minimal pause menu (quality + render scale). Temporary test scene in `world/world.ts` and free-fly `player/spectator.ts`. Verified in browser: renders, F3, pause, quality switch, settings saved.
   - [ ] **M1b** World look: `world/layout.ts`, `world/terrain.ts` (analytic height → cached heightmap → chunked LOD meshes + skirts), `world/materials.ts`, `render/shaderChunks.ts` (height fog + shared uniforms), `world/sky.ts` (gradient, ringed planet, sun, stars, clouds), `world/mountains.ts`, bloom (`EffectComposer` + `UnrealBloomPass` + `OutputPass`, off on Low).
   - [ ] **M1c** Player: `physics/collision.ts` (heightmap ground, circle/box colliders, spatial hash, camera ray), `player/player.ts` (walk/run/jump, slope limit), `player/avatar.ts` (model + procedural animation), `player/camera.ts` (orbit, collision, cinematic mode), basic HUD.
 - **M2 — Echo pulse**
@@ -132,7 +132,9 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 
 ## 4. Next steps (ordered — start at the top)
 
-1. **M1a** (see §3). Then M1b → M1c → … in order, one sub-milestone at a time, saving to `main` after each.
+1. **M1b** (see §3). Replace `World.buildTestScene()` and the flat `World.heightAt()` with real terrain/sky;
+   keep the `World` API (`applyQuality`, `update(dt, time, focus)`, `heightAt`, `dispose`) and the sun/hemi lights.
+   Bloom params can be tuned via `RenderSystem.setBloom()`. Then M1c → M2a → … one sub-milestone at a time.
 2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
 
 ## 5. Architecture / file map
@@ -142,9 +144,10 @@ app/
   layout.tsx            metadata, viewport, fonts
   page.tsx              mounts <EchoGame/> (client only)
   globals.css           Tailwind v4 theme tokens + game UI styles
-components/echo/        React UI overlay (HUD, menus, touch controls, intro, end screen)
+components/echo/        React UI overlay: echo-game.tsx (mounts engine, GameContext), use-ui.ts (store hook),
+                        hud.tsx, perf-overlay.tsx, boot-overlay.tsx, pause-menu.tsx (+ touch, intro, end screen later)
 game/                   Framework-agnostic engine (plain TypeScript + three)
-  core/                 Game.ts (init/loop/state machine), events.ts, input.ts
+  core/                 Game.ts (init/loop/state machine, public UI API), events.ts, input.ts, settings.ts, storage.ts
   render/               renderer.ts (renderer/composer/resize/stats), quality.ts (presets/auto), shaderChunks.ts (fog override, shared uniforms, material injection)
   world/                layout.ts (ALL world coordinates — single source of truth), terrain.ts, sky.ts, mountains.ts, scatter.ts, particles.ts, materials.ts, geometry.ts, structures/*.ts (one builder per region)
   physics/collision.ts  colliders, spatial hash, player resolution, camera ray tests
@@ -196,8 +199,9 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 **In v0 (chat imported from this repo):**
 1. `SyncGit` with a commit message like `M1a: engine bootstrap` (first time in a chat: `branchName: "v0/echo-dev"`).
    It commits and pushes to the `v0/...` working branch only.
-2. Then fast-forward `main`: `git push origin HEAD:main`. If that fails, ask the owner to merge the branch
-   (v0 → Settings → Git) before opening a new chat.
+2. Then fast-forward `main`: `git push origin HEAD:main`. v0 shows the owner a permission prompt for this push
+   (platform rule for pushes to the default branch); the owner approves it. If it fails or is declined, ask the
+   owner to merge the branch (v0 → Settings → Git) before opening a new chat.
 
 **Elsewhere (plain git):** `git add -A && git commit -m "M1a: …" && git push origin HEAD:main`
 (if `origin` isn't GitHub: `git remote add github https://github.com/krushnahon99-netizen/SciFI-Game.git`).
@@ -207,7 +211,11 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 
 ## 8. Known issues & limitations
 
-- None recorded yet (project starting). Record anything untested or broken here, honestly.
+- Anti-aliasing is MSAA on the bloom composer target only, so **Low** (no bloom) has no AA.
+- Pointer lock is refused in sandboxed iframes; input then switches to drag-to-look (click = pulse).
+- Headless test browser uses SwiftShader (software GL): it auto-selects Low; its FPS says nothing about real GPUs.
+- three r186: `PCFSoftShadowMap` was removed (use `PCFShadowMap`); `THREE.Clock` is deprecated (loop uses rAF time).
+- Untested so far: real GPUs, mobile devices, Safari/Firefox.
 
 ## 9. Milestone log (append-only)
 
@@ -215,3 +223,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | --- | --- | --- |
 | M0 | 2026-10-29 | Created handoff system: AGENTS.md, docs/GAME_SPEC.md (verbatim brief), README stub. |
 | M0.1 | 2026-10-29 | Credit budget protocol (§0.1), sub-milestone plan M1a…M6, save-to-`main` rule (§7). This chat: ~$1.5 spent on Q&A before any code, incl. ~$0.50 for one naive credit check. |
+| M1a | 2026-10-29 | Engine bootstrap: three r186, loop/phases, input (pointer lock + drag fallback), renderer + bloom composer, quality presets, settings persistence, HUD/perf/pause UI, test scene. tsc clean, browser-verified. |
