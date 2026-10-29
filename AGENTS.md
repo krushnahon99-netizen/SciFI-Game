@@ -11,23 +11,66 @@
 
 ## 0. Resume protocol (do this EVERY session)
 
-1. Read this file fully, then skim `docs/GAME_SPEC.md`.
-2. Look at **§3 Current status** and **§4 Next steps**. Continue from the first unchecked item.
+1. Read this file fully. Read `docs/GAME_SPEC.md` only for the section your current step needs.
+2. Follow **§0.1 Credit budget protocol** for the whole session (mandatory).
+3. Look at **§3 Current status** and **§4 Next steps**. Continue from the first unchecked item.
    Do **not** restart, re-plan, or rewrite finished systems unless they are broken.
-3. Install + run (`pnpm install`, `pnpm dev`) and check the browser console before changing anything.
-4. Work in small milestones. After **each** milestone:
+4. `pnpm install` and check the build/console before changing anything.
+5. Work in **sub-milestones** (M1a, M1b, …). After **each** one:
    - update §3, §4 and append a line to **§9 Milestone log**;
-   - `git add -A && git commit -m "M<n>: <summary>"`;
-   - push to GitHub (see **§7 Saving work**). A milestone is not done until it is pushed.
-5. Never commit a broken build. If credits/time are running low: commit + push what works now and write
-   exactly what is unfinished (file, function, what is left) in §4.
+   - commit + push to **`main`** (see **§7 Saving work**). A step is not done until it is on `main`.
+6. Never commit a broken build. Unfinished files may be committed if nothing imports them yet.
 
-**Owner's resume prompt** (paste into a fresh chat after importing this repo):
+**Owner's resume prompt** (paste into a fresh chat after importing this repo; edit the budget):
 
 ```
-Read AGENTS.md in this repo first and follow its resume protocol. Continue PROJECT ECHO from
-"Next steps". Commit and push to GitHub after every milestone and keep AGENTS.md updated.
+Budget: $5.00. Read AGENTS.md first and follow its resume protocol and credit rules (§0.1).
+Continue PROJECT ECHO from "Next steps". I authorize pushing each finished sub-milestone
+directly to main. Keep AGENTS.md updated.
 ```
+
+### 0.1 Credit budget protocol (MANDATORY)
+
+The owner works on small budgets (usually **$5 of v0 credits per account**) and switches accounts when they
+run out. Credits running out mid-step lose all unpushed work. Rule of thumb: **save often, check rarely.**
+
+**Budget.** The owner's first message says `Budget: $X`. If not, assume $5.00. Note the session start time (UTC).
+
+**Prices** (measured 2026-10-29 in v0 with Claude Opus 5.5: input $4, output $20, cache-read $0.20,
+cache-write $5 per 1M tokens):
+
+| Action | Approx. cost |
+| --- | --- |
+| Each new owner message (context load / re-cache) | $0.30–0.70 before any work |
+| Each tool step | $0.02–0.06 (grows with context size) |
+| Model output, including reasoning | $0.02 per 1k tokens |
+| Writing ~1,000 lines of code | ~$0.35 all-in |
+| One credit check, cheap way (below) | ~$0.03–0.05 |
+| One credit check, naive way (broad tool searches, listing chats, paging events) | ~$0.50 |
+
+**Estimate for free, verify rarely.** Keep a running estimate without tools:
+`spent ≈ 0.50 × owner messages + 0.04 × tool steps + 0.35 × (lines written / 1000)`.
+Do a real check only (a) before starting a new sub-milestone, or (b) when the estimate says ≤ $1.50 left.
+At most ~4 real checks per session.
+
+**Cheap real check (v0 only):**
+1. Once per session: `tool_search_tool_bm25` with query `credit usage summary` and **`limit: 1`**.
+   Broad searches dump ~10 huge tool schemas into context; that is what made the first check cost $0.50.
+2. Call the surfaced `v0_usage_getSummary_*` with `start` = session start (ISO UTC). It is read-only.
+3. `left = Budget − credits.total − 0.20` (data lags ~1 min; the running reply isn't fully counted).
+   Don't list chats, don't page usage events, don't discuss the numbers at length.
+
+**Thresholds (`left`):**
+- **> $1.50**: keep working.
+- **$0.75–1.50 (LOW)**: finish only the current small step, then save. Start nothing big.
+- **< $0.75 (CRITICAL)**: stop now and save. Never drop under ~$0.50; the save itself costs ~$0.25.
+
+**Save** = update §3/§4/§9 (exact file, function, what is left) → commit → push to `main` → short final message.
+
+**Spend less in general:** batch independent writes/edits into one step; don't re-read files you just wrote;
+no broad tool searches; keep reasoning and replies short; one browser check per sub-milestone.
+**Owner:** send one detailed message instead of several small ones (each message has a fixed startup cost) and
+avoid Q&A in a build chat. A cheaper model stretches the budget but is weaker on complex 3D code.
 
 ---
 
@@ -61,18 +104,32 @@ downloads: geometry, textures and audio are procedural.
 
 ## 3. Current status
 
+Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Save after every one.
+
 - [x] **M0** — Repo, handoff docs (`AGENTS.md`), original spec (`docs/GAME_SPEC.md`), README stub.
-- [ ] **M1** — Engine foundation: renderer + quality presets + bloom, height fog, sky (gradient, ringed planet, sun, clouds, stars), layered distant mountains, chunked LOD terrain, materials, third-person player (walk/run/jump, slope limits, collisions), orbit camera with collision, keyboard + mouse (pointer lock), basic HUD.
-- [ ] **M2** — Echo pulse system: shader wavefront + glyph reveal, expanding shell, reactive registry, glyph path markers, memory ghosts, past-state overlays, reactive crystals.
-- [ ] **M3** — World content + puzzles + progression: all regions, 3 puzzles, 3+ secrets, memory fragments, objectives, journal, save/load, respawn, ending.
-- [ ] **M4** — Procedural audio: drones, wind, crystal resonance, pulse, UI/puzzle cues, footsteps, volume + mute.
-- [ ] **M5** — Full UI: title/continue, skippable intro cinematic, pause menu (journal / settings / controls), end screen, perf overlay, touch controls, auto-quality.
-- [ ] **M6** — Optimization, browser testing, README feature checklist (implemented / tested / untested), known limitations.
+- [x] **M0.1** — Credit budget protocol (§0.1), sub-milestone plan, save-to-`main` rule (§7).
+- **M1 — Engine foundation**
+  - [ ] **M1a** Bootstrap: `pnpm add three @types/three`; `app/page.tsx` mounts `<EchoGame/>` (client only); `game/core/Game.ts` (init, loop, state), `core/events.ts`, `core/input.ts` (keyboard, mouse, pointer lock); `render/renderer.ts` (renderer, resize, tone mapping, stats); `render/quality.ts` (Low/Medium/High/Ultra); `ui/store.ts`; minimal HUD (FPS). Test ground + light visible.
+  - [ ] **M1b** World look: `world/layout.ts`, `world/terrain.ts` (analytic height → cached heightmap → chunked LOD meshes + skirts), `world/materials.ts`, `render/shaderChunks.ts` (height fog + shared uniforms), `world/sky.ts` (gradient, ringed planet, sun, stars, clouds), `world/mountains.ts`, bloom (`EffectComposer` + `UnrealBloomPass` + `OutputPass`, off on Low).
+  - [ ] **M1c** Player: `physics/collision.ts` (heightmap ground, circle/box colliders, spatial hash, camera ray), `player/player.ts` (walk/run/jump, slope limit), `player/avatar.ts` (model + procedural animation), `player/camera.ts` (orbit, collision, cinematic mode), basic HUD.
+- **M2 — Echo pulse**
+  - [ ] **M2a** `echo/echoSystem.ts`: 2 pulse slots in shared uniforms, `onBeforeCompile` wavefront + glyph reveal, expanding shell, Q/click input + cooldown, HUD cooldown.
+  - [ ] **M2b** `echo/reactive.ts` registry: glyph path markers, memory ghosts, past-state overlays, reactive crystals, phase objects.
+- **M3 — World, puzzles, progression**
+  - [ ] **M3a** Structures: Cradle + Sundered Monolith, Hall of Echoes, Singing Vale (`world/structures/*.ts`), scatter, particles, `gameplay/regions.ts`.
+  - [ ] **M3b** Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates.
+  - [ ] **M3c** Puzzles: Choir Sequence, Glass Bridge, Dormant Grid (`gameplay/puzzles.ts`, `interactables.ts`).
+  - [ ] **M3d** Progression: `content.ts` (all text), memory fragments, 3 secrets, objectives, journal data, save/load (`progression.ts`), respawn, ending.
+- [ ] **M4** Procedural audio (`audio/audio.ts`): drones, wind, crystal resonance, pulse, UI/puzzle cues, footsteps, volume + mute.
+- **M5 — UI**
+  - [ ] **M5a** Title/continue, skippable intro cinematic, pause menu (journal / settings / controls), end screen.
+  - [ ] **M5b** Touch controls, perf overlay (F3), auto-quality.
+- [ ] **M6** Optimization, browser testing, README checklist (implemented / tested / untested), known limitations.
 
 ## 4. Next steps (ordered — start at the top)
 
-1. **M1**: `pnpm add three @types/three`, then build `game/` engine foundation (see §5 file map).
-2. Continue M2 → M6 in order. Keep §3/§4/§9 updated after each.
+1. **M1a** (see §3). Then M1b → M1c → … in order, one sub-milestone at a time, saving to `main` after each.
+2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
 
 ## 5. Architecture / file map
 
@@ -127,22 +184,22 @@ look area, Pulse / Jump / Interact / Pause buttons.
 **Quality presets**: Low (no shadows/bloom, DPR ≤ 1), Medium, High, Ultra (+ Auto, which only steps
 down when measured FPS stays low). Render-scale slider, FPS/draw-call overlay.
 
-## 7. Saving work (git) — how to push milestones
+## 7. Saving work (git) — every sub-milestone must reach `main`
 
-The v0 sandbox has its own internal git remote (`origin` → `git.v0.app`). GitHub is a second remote:
+Every new chat starts from `main`, so work that isn't on `main` is invisible to the next chatbot.
+The owner has authorized pushing finished sub-milestones directly to `main` (also stated in the resume prompt).
 
-```bash
-git remote -v                                   # check remotes
-git remote add github https://github.com/krushnahon99-netizen/SciFI-Game.git   # only if missing
-git add -A
-git commit -m "M3: puzzles + progression"
-git push github HEAD:main
-```
+**In v0 (chat imported from this repo):**
+1. `SyncGit` with a commit message like `M1a: engine bootstrap` (first time in a chat: `branchName: "v0/echo-dev"`).
+   It commits and pushes to the `v0/...` working branch only.
+2. Then fast-forward `main`: `git push origin HEAD:main`. If that fails, ask the owner to merge the branch
+   (v0 → Settings → Git) before opening a new chat.
+
+**Elsewhere (plain git):** `git add -A && git commit -m "M1a: …" && git push origin HEAD:main`
+(if `origin` isn't GitHub: `git remote add github https://github.com/krushnahon99-netizen/SciFI-Game.git`).
 
 - Never commit secrets. `.env*` files must stay ignored (check `git status` before committing).
-- If the push fails with 401/403: the chat has no GitHub credentials. Ask the owner to connect GitHub
-  (v0 → Settings → Git) or to import this repo via "Import from GitHub"; then v0 pushes automatically.
-- In a chat that was imported from this repo, `origin` may already point to GitHub — then push to `origin`.
+- 401/403 on push: the chat has no GitHub credentials; ask the owner to connect GitHub (v0 → Settings → Git).
 
 ## 8. Known issues & limitations
 
@@ -153,3 +210,4 @@ git push github HEAD:main
 | Milestone | Date | Summary |
 | --- | --- | --- |
 | M0 | 2026-10-29 | Created handoff system: AGENTS.md, docs/GAME_SPEC.md (verbatim brief), README stub. |
+| M0.1 | 2026-10-29 | Credit budget protocol (§0.1), sub-milestone plan M1a…M6, save-to-`main` rule (§7). This chat: ~$1.5 spent on Q&A before any code, incl. ~$0.50 for one naive credit check. |
