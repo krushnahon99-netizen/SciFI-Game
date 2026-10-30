@@ -14,6 +14,7 @@ export type Action =
   | 'journal'
   | 'mute'
   | 'perf'
+  | 'freecam'
 
 export type LookMode = 'pointer-lock' | 'drag'
 
@@ -38,6 +39,7 @@ const KEY_BINDINGS: Readonly<Record<string, Action>> = {
   KeyJ: 'journal',
   KeyM: 'mute',
   F3: 'perf',
+  F4: 'freecam',
 }
 
 /** Single mouse events larger than this are browser glitches (seen right after pointer lock), not real motion. */

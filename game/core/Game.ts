@@ -1,4 +1,7 @@
 import * as THREE from 'three'
+import { Avatar } from '../player/avatar'
+import { CameraRig } from '../player/camera'
+import { Player } from '../player/player'
 import { Spectator } from '../player/spectator'
 import { QUALITY_PRESETS, type QualityLevel, type QualitySettings } from '../render/quality'
 import { RenderSystem, disposeObject3D } from '../render/renderer'
@@ -24,7 +27,11 @@ export class Game {
   readonly world: World
 
   private readonly settings: Settings
-  private readonly spectator: Spectator
+  private readonly player: Player
+  private readonly avatar: Avatar
+  private readonly cameraRig: CameraRig
+  /** Free-fly debug camera (F4); null while the third-person camera is active. */
+  private spectator: Spectator | null = null
   private phase: GamePhase = 'boot'
   private phaseChangedAt = 0
   /** Wall-clock seconds for ambient animation (keeps running while paused). */
@@ -54,8 +61,12 @@ export class Game {
 
     this.input = new Input(this.renderSystem.canvas, this.events)
     this.world = new World(this.scene, quality)
-    const spawn = new THREE.Vector3(SPAWN.x, this.world.heightAt(SPAWN.x, SPAWN.z) + 3.2, SPAWN.z)
-    this.spectator = new Spectator(this.camera, spawn, SPAWN.yaw)
+    this.player = new Player(this.world.collision, SPAWN)
+    this.avatar = new Avatar()
+    this.scene.add(this.avatar.root)
+    this.cameraRig = new CameraRig(this.camera, this.world.collision, SPAWN.yaw)
+    this.avatar.update(0, this.player, 0)
+    this.cameraRig.update(0, this.player.position)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -118,6 +129,7 @@ export class Game {
     this.disposed = true
     this.renderSystem.renderer.setAnimationLoop(null)
     this.input.dispose()
+    this.avatar.dispose()
     this.world.dispose()
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
@@ -171,15 +183,36 @@ export class Game {
   private update(dt: number) {
     this.time += dt
     this.handleSystemActions()
-    if (this.phase === 'playing') {
-      this.spectator.update(dt, this.input, (x, z) => this.world.heightAt(x, z))
+    const playing = this.phase === 'playing'
+    if (this.spectator) {
+      if (playing) this.spectator.update(dt, this.input, (x, z) => this.world.heightAt(x, z))
+    } else {
+      if (playing && !this.cameraRig.inCinematic) {
+        this.cameraRig.applyLook(this.input)
+        this.player.update(dt, this.input, this.cameraRig.yaw)
+      } else if (playing) {
+        this.player.update(dt, null, this.cameraRig.yaw)
+      }
+      this.avatar.update(playing ? dt : 0, this.player, this.time)
+      this.cameraRig.update(dt, this.player.position)
     }
-    this.world.update(dt, this.time, this.camera.position)
+    const focus = this.spectator ? this.camera.position : this.player.position
+    this.world.update(dt, this.time, focus, this.camera.position)
+  }
+
+  /** F4: detach a free-fly debug camera from the player (and back). */
+  private toggleFreeCam() {
+    if (this.spectator) {
+      this.spectator = null
+      return
+    }
+    this.spectator = new Spectator(this.camera, this.camera.position.clone(), this.cameraRig.yaw, this.cameraRig.pitch)
   }
 
   private handleSystemActions() {
     const input = this.input
     if (input.wasPressed('perf')) this.togglePerf()
+    if (input.wasPressed('freecam') && this.phase === 'playing') this.toggleFreeCam()
     if (input.wasPressed('pause') && performance.now() - this.phaseChangedAt > PHASE_TOGGLE_DEBOUNCE_MS) {
       if (this.phase === 'playing') this.pause()
       else if (this.phase === 'paused') this.resume()

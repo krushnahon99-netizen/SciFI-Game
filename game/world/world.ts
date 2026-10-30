@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { Collision } from '../physics/collision'
 import type { QualitySettings } from '../render/quality'
 import { installEchoFog, sharedUniforms } from '../render/shaderChunks'
 import { MONOLITH, SUN_DIRECTION } from './layout'
@@ -20,6 +21,7 @@ export class World {
   readonly sun = new THREE.DirectionalLight('#ffbf8a', 5)
   readonly hemi = new THREE.HemisphereLight('#7f8fc0', '#3a2a22', 1.2)
   readonly terrain: Terrain
+  readonly collision: Collision
 
   private readonly noiseTexture: THREE.DataTexture
   private readonly sunTarget = new THREE.Object3D()
@@ -52,6 +54,7 @@ export class World {
     sharedUniforms.uTerrainShadow.value = this.terrain.shadowTexture
     sharedUniforms.uTerrainSplat.value = this.terrain.splatTexture
     this.terrain.createMeshes(createTerrainMaterial())
+    this.collision = new Collision((x, z) => this.terrain.heightAt(x, z))
     scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
 
     this.buildPlaceholderMonolith()
@@ -146,6 +149,8 @@ export class World {
     ring.position.set(MONOLITH.x + 0.4, ground + 14, MONOLITH.z + 0.8)
     ring.rotation.y = 0.35
     this.scene.add(left, right, ring)
+    this.collision.addBox(left.position.x, left.position.z, 2.6, 1.5, left.rotation.y, ground - 2, ground + 21)
+    this.collision.addBox(right.position.x, right.position.z, 2.4, 1.35, right.rotation.y, ground - 2, ground + 15)
     this.animators.push((_dt, time) => {
       ring.rotation.z = time * 0.25
     })

@@ -117,7 +117,7 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 - **M1 — Engine foundation**
   - [x] **M1a** Bootstrap (three r186). `EchoGame` lazy-imports the engine client-side; `Game.ts` loop + phase machine (`playing`/`paused`, pause on pointer-lock loss); `input.ts` (actions by `KeyboardEvent.code`, pointer lock with automatic drag-to-look fallback for sandboxed iframes, virtual API for touch); `renderer.ts` (ACES, PCF shadows, EffectComposer bloom with MSAA target, GPU name + software-GPU detection → Low); `quality.ts` presets; `settings.ts`/`storage.ts` (localStorage + memory fallback); `ui/store.ts` + `useUI`; HUD (FPS chip, F3 stats), boot overlay, minimal pause menu (quality + render scale). Temporary test scene in `world/world.ts` and free-fly `player/spectator.ts`. Verified in browser: renders, F3, pause, quality switch, settings saved.
   - [x] **M1b** World look (details: §4 Engine notes). `noise.ts`, `layout.ts`, `terrain.ts` (analytic height → 361² heightmap → LOD chunks + skirts, splat + baked sun-shadow textures), `render/shaderChunks.ts` (height fog, `patchWorldMaterial`), `materials.ts`, `sky.ts` (ringed planet, sun, stars, clouds), `mountains.ts`, placeholder monolith in `world.ts`, bloom on Medium+. Tuned: `PLANET_NOTCH` (low rim + ranges under the planet), ranges rise with distance, softer trail edges. Browser-verified on Low and High.
-  - [ ] **M1c** Player: `physics/collision.ts` (heightmap ground, circle/box colliders, spatial hash, camera ray), `player/player.ts` (walk/run/jump, slope limit), `player/avatar.ts` (model + procedural animation), `player/camera.ts` (orbit, collision, cinematic mode), basic HUD.
+  - [x] **M1c** Player. `physics/collision.ts` (`Collision`, owned by `World`: heightmap ground + normal, cylinder / yaw-box colliders in a 16 m hash, `resolveCharacter()` with walkable tops, `clearance()` sphere march for the camera); `player/player.ts` (walk 4.5 / run 8 m/s, jump with coyote + buffer, 40° slope limit with sliding, ground snap); `player/avatar.ts` (primitive explorer, glowing visor + backpack core, procedural idle/walk/run/air/landing); `player/camera.ts` (`CameraRig`: orbit, shoulder offset, wheel zoom, pull-in on hits, `setCinematic()`/`clearCinematic()`); `Game.ts` wiring (F4 = free-fly debug camera; shadow focus = player). Monolith has box colliders. Browser-verified: spawn view, running + camera follow. Not yet exercised in the browser: jumping, slope limit, collider push, camera pull-in.
 - **M2 — Echo pulse**
   - [ ] **M2a** `echo/echoSystem.ts`: 2 pulse slots in shared uniforms, `onBeforeCompile` wavefront + glyph reveal, expanding shell, Q/click input + cooldown, HUD cooldown.
   - [ ] **M2b** `echo/reactive.ts` registry: glyph path markers, memory ghosts, past-state overlays, reactive crystals, phase objects.
@@ -134,21 +134,16 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 
 ## 4. Next steps (ordered — start at the top)
 
-1. **M1c** player (see §3). Plan (decided — implement, then tune):
-   - `physics/collision.ts`: ground = `world.heightAt` + normal by central differences; static colliders (vertical
-     cylinders and yaw-rotated boxes, each with a y range) in a spatial hash; `resolveCharacter()` pushes the player out
-     of colliders (collider tops count as ground); `cameraClearance()` returns how far the camera can go (heightmap march
-     + collider tests).
-   - `player/player.ts`: feet position + velocity; walk 4.5 / run 8 m/s, ground accel 30, air accel 6, jump 6.2 m/s,
-     gravity 20, coyote + jump buffer 0.12 s; slope limit 40° (steeper = slide, no jump, no walking uphill); ground snap
-     for walking down slopes; moves relative to camera yaw and turns to face the movement.
-   - `player/avatar.ts`: procedural explorer (capsules/spheres; suit, glowing visor + backpack core), procedural
-     idle/walk/run/air animation from speed + phase.
-   - `player/camera.ts`: orbit rig (yaw/pitch from look input), shoulder offset, smoothing, pulls in on terrain/collider
-     hits; cinematic override API for M5a.
-   - `Game.ts`: player + camera replace the spectator (F4 = free-fly debug camera); shadow focus = player, LOD viewer =
-     camera. HUD hint shows movement controls.
-2. Then M2a → M2b → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
+1. **M2a** Echo pulse (see §3). Plan (decided — implement, then tune):
+   - `echo/echoSystem.ts`: 2 pulse slots in `sharedUniforms` (`uEchoPulses: vec4[2]` = origin xyz + start time; radius =
+     (time − start) × 24 m/s up to 70 m; slot reused round-robin). `patchWorldMaterial` gets a default emissive term so
+     every world material shows the travelling wavefront (thin bright band ~3 m) plus a glyph reveal behind it (procedural
+     glyph lines from `uEchoNoise`, fading over ~6 s). An expanding additive fresnel shell mesh per slot.
+   - Input: `pulse` action (Q / left click while locked / tap in drag mode) with a 2.5 s cooldown; avatar backpack core
+     flares. HUD: cooldown ring in `hud.tsx` via a throttled `uiStore` field (`pulseCharge` 0…1).
+   - Emit `pulse` on `game.events` ({ origin, time }) for the M2b reactive registry.
+   - While here, exercise in the browser what M1c didn't: jumping, slope limit at the ridge, monolith collider push.
+2. Then M2b → M3a → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
    (file, function, what is left).
 
 **Engine notes (as built in M1b — read before touching rendering/world code):**
@@ -221,7 +216,7 @@ facility door, the Spire energy barrier.
 summit → world-wide pulse, the past fully revealed, end screen with stats; free roam after.
 
 **Controls**: WASD/arrows move, Shift run, Space jump, mouse look (click to lock), Q / left click = Echo
-Pulse, E = interact, Esc = pause, J = journal, M = mute, F3 = perf stats. Touch: left joystick, right-side
+Pulse, E = interact, Esc = pause, J = journal, M = mute, F3 = perf stats, F4 = free-fly debug camera, wheel = zoom. Touch: left joystick, right-side
 look area, Pulse / Jump / Interact / Pause buttons.
 
 **Quality presets**: Low (no shadows/bloom, DPR ≤ 1), Medium, High, Ultra (+ Auto, which only steps
@@ -265,3 +260,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1b-notes | 2026-10-30 | 2nd session also ended before any code (owner: "save all"). Saved M1b implementation notes in §4: fog colour-space handling, O(N) terrain shadow sweep, chunk/skirt/LOD layout, program cache key, sky/mountain details, concrete ridge/trail coordinates. Lesson: design is done, so the next session should go straight to code. |
 | M1b-notes3 | 2026-10-30 | 3rd session, still no code: ~$3.2 spent on reading files + an unsaved planning pass, then the owner said "save". Added gotchas (DataTexture filters, R16F `unpackAlignment`, Spire/Hall formulas, faster mountain shadows, dither) and fixed the credit-check query. Lesson: write files in the first step and push every 1–2 files. |
 | M1b | 2026-10-30 | 4th session: M1b code was already on `main` (M1b-1, M1b-3) but the docs weren't updated. Browser-verified; tuned the planet notch, layered ranges and trail edges; condensed the M1b design/notes into §4 "Engine notes". |
+| M1c | 2026-10-30 | Player: collision (hash, colliders, camera clearance), controller (run/jump/slope limit), procedural avatar + animation, third-person camera rig with cinematic API, F4 free cam. tsc clean; browser-verified spawn + running. |

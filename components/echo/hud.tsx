@@ -19,7 +19,7 @@ export function Hud() {
         <p className="absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] px-4 text-center text-[0.68rem] uppercase tracking-[0.25em] text-foreground/75 [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
           {lookMode === 'pointer-lock' ? 'Click to look around' : 'Drag to look'}
           <span className="text-primary"> · </span>
-          WASD fly · Space / C up &amp; down · Shift fast
+          WASD move · Shift run · Space jump · Wheel zoom
           <span className="text-primary"> · </span>
           Esc pause · F3 stats
         </p>
