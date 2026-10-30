@@ -31,10 +31,20 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   to 3 lines below `sm`). `@keyframes echo-rise` in `app/globals.css`.
 - `ids.ts`: `ProgressView` gained `checkpoint` and `completed` (coordination §6, point 1).
 
+## Save path (IMPORTANT, since 2026-10-30)
+
+Chat B's account (GitHub `tspencer164-5346`) has **no write access** to `krushnahon99-netizen/SciFI-Game`. When the
+owner connected Git, v0 created a new private repo for this chat instead: `tspencer164-5346/v0-fvADj3yECIo` (its
+`main` = B's M3d-data commit `3ffdcf4`; later B saves go to branch `v0/lane-b` there via SyncGit). Until access is fixed:
+- B pulls A's work anonymously (public repo): `git remote add scifi https://github.com/krushnahon99-netizen/SciFI-Game.git`
+  then `git fetch scifi main && git merge scifi/main`.
+- B's work reaches SciFI-Game `main` only when someone with access merges it, e.g. Chat A after the owner makes the B repo
+  public: `git fetch https://github.com/tspencer164-5346/v0-fvADj3yECIo.git v0/lane-b && git merge FETCH_HEAD`, push.
+
 ## Next steps
 
-1. Check coordination §6 / §7 for A's answer.
-2. **M4 audio** (`game/audio/audio.ts`, new). `AudioEngine`: `AudioContext` created / resumed on the first
+1. Check the save path above, then coordination §6 / §7 for A's answer.
+2. **M4 audio** (not started) (`game/audio/audio.ts`, new). `AudioEngine`: `AudioContext` created / resumed on the first
    pointerdown or keydown (autoplay policy); master gain → compressor → destination; buses ambience / sfx / ui.
    Ambience: per-region drone chords crossfaded on `regionEnter` (3–4 detuned oscillators, slow filter LFO) and wind
    (looped noise buffer → bandpass, slow random gusts). SFX: pulse (sub thump + rising shimmer), crystal resonance on
@@ -53,3 +63,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | --- | --- | --- |
 | review | 2026-10-30 | Replied in coordination §6: 4 non-blocking points (`ProgressView.checkpoint` / `completed` added, no runtime reset, all text in content.ts, optional audio hooks requested in §7). |
 | M3d-data | 2026-10-30 | `content.ts` (all text), `progression.ts` (events → save, objective, hints, notices), Game.ts wiring, store fields, HUD objective + notices. tsc clean; browser-verified (objective, fragment + secret notices, save written). |
+| save | 2026-10-30 | Push to SciFI-Game blocked (B's account has no access); work backed up to `tspencer164-5346/v0-fvADj3yECIo` (`main` 3ffdcf4, branch `v0/lane-b`). Stopped at LOW credits before M4. |
