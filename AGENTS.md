@@ -136,6 +136,39 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
    keep the `World` API (`applyQuality`, `update(dt, time, focus)`, `heightAt`, `dispose`) and the sun/hemi lights.
    Bloom params can be tuned via `RenderSystem.setBloom()`. Then M1c → M2a → … one sub-milestone at a time.
 2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
+   **2026-10-30 session stopped before writing code.** M1b design below is decided; no M1b files exist yet.
+
+**M1b design (decided — implement as written, tune visually):**
+- **Sun moves to the west** (side-light at spawn, shadows fall east): `SUN_DIRECTION = normalize(-0.92, 0.30, -0.25)`
+  (~17° up). Planet NNE, low: dir `(0.42, 0.29, -0.86)`, sin(angular radius) 0.165, rings tilted/opened ~0.32.
+  Put both in `layout.ts`. Outer rim is **low (~24 m) toward the sun azimuth, ~72 m elsewhere**, so the rim
+  doesn't shadow the valleys.
+- **layout.ts** (x east, z south, north = −z): spawn (-4, 242) yaw -0.12; Cradle (0,198) r70; Monolith (8,176);
+  ridge polyline `[-370,140]…[-150,98],[-70,94],[10,92],[90,98]…[370,144]` halfWidth 36, height 34;
+  Hall pass corridor at (-70,94) N–S, halfWidth 9, halfLength 42 (only way through the ridge);
+  Vale basin (-150,-32) r100 depth 10; chasm polyline `[28,92],[22,40],[30,-10],[22,-60],[36,-120],[28,-190],[42,-260],[40,-350]`
+  halfWidth 13, floor -52 (tip buried in the ridge, end cut into the rim); bridge on the chasm at (26,-38);
+  Works plateau (150,-150) r48; Undervault (176,-178); Spire hill (200,25) top r12 / foot r62 / h42 with a
+  spiral ramp (225°→495°, radius 51→13) as the only way up; Drowned Bell crater (100,28) r24 depth 6.5;
+  Ghost Garden (-150,205); Sleeping Giant (-222,22); trails linking spawn → Hall → Vale → bridge → Works → ramp.
+- **terrain.ts**: `sampleTerrain(x,z)` = base fbm → basins/plateau/crater/Spire hill+ramp → ridge → Hall corridor
+  carve → rim → chasm carve → trails (also bakes splat: path/vale/works). Heightmap 361² (2 m), triangle
+  interpolation matching the index diagonal for `heightAt`. Chunks 40 cells (80 m, 9×9), LOD steps 1/2/4/8 at
+  ~115/230/400 m × `terrainDetail`, shared index buffers per LOD, skirts sized from edge LOD error.
+  **Baked terrain sun shadow**: per sample, march toward the sun → "shadow height" → R16F texture; every world
+  material does `directLight.color *= smoothstep(sh-1.6, sh+0.6, worldY)` (terrain doesn't cast into the shadow map).
+- **shaderChunks.ts**: global fog chunk override = exponential height fog integrated along the ray
+  (`fogDensity` from FogExp2 ≈ 0.0034, falloff ≈ 0.0115) + sun in-scatter; fog colour is tone-mapped/encoded
+  because three applies fog after tonemapping. `patchWorldMaterial(material, {key, hooks…})` adds shared uniforms,
+  `vWorldPos`/`vWorldNormal`, hooks after color/roughness/normal/emissive, and patches
+  `getDirectionalLightInfo( directionalLight, directLight );` in `lights_fragment_begin` (verified in r186).
+- **sky.ts**: BackSide sphere, `gl_Position = p.xyww`, renderOrder 1000 (drawn after opaques), horizon colour =
+  fog colour + same in-scatter; analytic ringed planet (ray–sphere + ring plane, mutual shadows), stars,
+  streaky drifting clouds, sun disk (HDR, blooms), far range silhouettes painted at the horizon.
+- **mountains.ts**: polar ring mesh r 380→1250 (lower toward the sun), baked per-vertex sun visibility.
+- **materials.ts**: 256² tileable RGBA noise DataTexture (fbm/fbm/worley/ridged); terrain material (slope rock with
+  strata + biplanar, soil, trails, vale tint, ash) with derivative bump; stone + energy materials.
+- Raise `viewDistance` presets to ≥1500 so mountains aren't clipped; spectator spawns at `SPAWN`.
 
 ## 5. Architecture / file map
 
@@ -224,3 +257,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M0 | 2026-10-29 | Created handoff system: AGENTS.md, docs/GAME_SPEC.md (verbatim brief), README stub. |
 | M0.1 | 2026-10-29 | Credit budget protocol (§0.1), sub-milestone plan M1a…M6, save-to-`main` rule (§7). This chat: ~$1.5 spent on Q&A before any code, incl. ~$0.50 for one naive credit check. |
 | M1a | 2026-10-29 | Engine bootstrap: three r186, loop/phases, input (pointer lock + drag fallback), renderer + bloom composer, quality presets, settings persistence, HUD/perf/pause UI, test scene. tsc clean, browser-verified. |
+| M1b-plan | 2026-10-30 | Owner stopped the session early: no code written. Full M1b design saved in §4 (layout coordinates, terrain/fog/sky/shadow approach). |
