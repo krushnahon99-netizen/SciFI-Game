@@ -60,6 +60,9 @@ already run (installs, builds). No extra steps needed. Only tell the owner a bal
 **Cheap real check (v0 only):**
 1. Once per session: `tool_search_tool_bm25` with query `credit usage summary` and **`limit: 1`**.
    Broad searches dump ~10 huge tool schemas into context; that is what made the first check cost $0.50.
+   (2026-10-30: both `credit usage summary` and `usage getSummary total credits` surfaced only
+   `v0_usage_listEvents_*`, which needs a permission prompt. If that happens, skip the check, save by time
+   instead, and stop searching.)
 2. Call the surfaced `v0_usage_getSummary_*` with `start` = session start (ISO UTC). It is read-only.
 3. `left = Budget − credits.total − 0.20` (data lags ~1 min; the running reply isn't fully counted).
    Don't list chats, don't page usage events, don't discuss the numbers at length.
