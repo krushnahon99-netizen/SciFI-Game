@@ -28,6 +28,8 @@ const REVEAL_SPACING: Readonly<Record<ReactiveKind, number>> = {
   trigger: 0.1,
 }
 
+const PHASE_WARN_SPACING = 0.4
+
 interface Graph {
   readonly kit: AudioKit
   readonly master: GainNode
@@ -55,6 +57,7 @@ export class AudioEngine {
   /** Correct puzzle steps in a row; each one rings a higher note. */
   private streak = 0
   private readonly lastReveal = new Map<ReactiveKind, number>()
+  private lastPhaseWarn = -Infinity
   private readonly unsubscribe: Array<() => void>
 
   constructor(events: Emitter<GameEvents>, options: AudioOptions) {
@@ -66,11 +69,14 @@ export class AudioEngine {
       events.on('reactiveHit', ({ kind, position }) => this.reveal(kind, position)),
       events.on('footstep', ({ surface, run }) => this.play((kit) => sfx.footstep(kit, surface, run))),
       events.on('land', ({ impact }) => this.play((kit) => sfx.land(kit, impact))),
-      events.on('puzzleStep', ({ ok }) => {
+      events.on('puzzleStep', ({ ok, index }) => {
         const step = this.streak
         this.streak = ok ? step + 1 : 0
-        this.play((kit) => sfx.puzzleStep(kit, this.tone, ok, step))
+        this.play((kit) => sfx.puzzleStep(kit, this.tone, ok, step, index))
       }),
+      events.on('choirNote', ({ index, position }) => this.play((kit) => sfx.choirNote(kit, this.tone, index, position))),
+      events.on('phaseWarn', ({ position }) => this.phaseWarn(position)),
+      events.on('finaleStart', () => this.play((kit) => sfx.finale(kit, REGION_TONES.spire))),
       events.on('puzzleSolved', () => {
         this.streak = 0
         this.play((kit) => sfx.solved(kit, this.tone))
@@ -157,6 +163,16 @@ export class AudioEngine {
     if (now - (this.lastReveal.get(kind) ?? -Infinity) < REVEAL_SPACING[kind]) return
     this.lastReveal.set(kind, now)
     sfx.reveal(graph.kit, kind, position, this.tone)
+  }
+
+  /** A whole bridge of planks warns at once; one warning per PHASE_WARN_SPACING is enough. */
+  private phaseWarn(position: Vec3) {
+    const graph = this.graph
+    if (!graph || graph.kit.ctx.state !== 'running') return
+    const now = graph.kit.ctx.currentTime
+    if (now - this.lastPhaseWarn < PHASE_WARN_SPACING) return
+    this.lastPhaseWarn = now
+    sfx.phaseWarn(graph.kit, this.tone, position)
   }
 
   private setRegion(id: RegionId) {

@@ -61,21 +61,29 @@ function bell(voice: Voice, frequency: number, t: number, level: number, decay: 
   oscillator(voice, 'sine', frequency * 2.76, t, level * 0.2, { attack: 0.002, release: decay * 0.35 })
 }
 
-/** Ghost singers: detuned saw voices through two vowel formants, swelling in and out with vibrato. */
-function choir(kit: AudioKit, at: Vec3, tone: RegionTone, t: number) {
-  const voice = createVoice(kit, { at, ref: 12, reverb: 0.65 })
+/** Ghost singers: detuned saw voices through two vowel formants, swelling in and out with vibrato. `at: null` = everywhere. */
+function choir(
+  kit: AudioKit,
+  at: Vec3 | null,
+  frequencies: readonly number[],
+  t: number,
+  shape: Envelope,
+  level: number,
+  essential = false,
+) {
+  const voice = createVoice(kit, { at, ref: 12, reverb: 0.65 }, essential)
   if (!voice) return
   const { ctx } = kit
   const mix = new GainNode(ctx, { gain: 0 })
-  const end = envelope(mix.gain, t, 0.35, { attack: 1.2, hold: 1.4, release: 2.4 }) + 0.05
+  const end = envelope(mix.gain, t, level, shape) + 0.05
   for (const [frequency, Q] of FORMANTS) mix.connect(new BiquadFilterNode(ctx, { type: 'bandpass', frequency, Q })).connect(voice.input)
   const vibrato = new OscillatorNode(ctx, { frequency: 5.2 })
   const vibratoDepth = new GainNode(ctx, { gain: 9 })
   vibrato.connect(vibratoDepth)
   voice.play(vibrato, t, end)
-  for (const semitone of [12, 19, 24]) {
+  for (const frequency of frequencies) {
     for (const detune of [-8, 7]) {
-      const singer = new OscillatorNode(ctx, { type: 'sawtooth', frequency: tone.root * 2 ** (semitone / 12), detune })
+      const singer = new OscillatorNode(ctx, { type: 'sawtooth', frequency, detune })
       vibratoDepth.connect(singer.detune)
       singer.connect(mix)
       voice.play(singer, t, end)
@@ -87,6 +95,15 @@ const FORMANTS: ReadonlyArray<readonly [number, number]> = [
   [650, 5],
   [1080, 6],
 ]
+
+const GHOST_CHOIR = [12, 19, 24]
+
+/** Scale degree of pillar / node `index`: the Choir replay and the player's own step ring the same note. */
+const STEP_DEGREES = [0, 2, 4, 7]
+
+function stepDegree(index: number): number {
+  return STEP_DEGREES[((index % STEP_DEGREES.length) + STEP_DEGREES.length) % STEP_DEGREES.length]
+}
 
 function positionHash({ x, z }: Vec3): number {
   const h = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453
@@ -140,9 +157,11 @@ export function reveal(kit: AudioKit, kind: ReactiveKind, at: Vec3, tone: Region
       noise(voice, { type: 'highpass', frequency: 5000 }, t, 0.035, { attack: 0.2, hold: 0.3, release: 0.6 })
       return
     }
-    case 'ghosts':
-      choir(kit, at, tone, t)
+    case 'ghosts': {
+      const frequencies = GHOST_CHOIR.map((semitone) => tone.root * 2 ** (semitone / 12))
+      choir(kit, at, frequencies, t, { attack: 1.2, hold: 1.4, release: 2.4 }, 0.35)
       return
+    }
     case 'pastState': {
       const voice = createVoice(kit, { at, ref: 16, reverb: 0.6, echo: 0.15 })
       if (!voice) return
@@ -219,13 +238,16 @@ export function land(kit: AudioKit, impact: number) {
   noise(voice, { type: 'bandpass', frequency: 1700, Q: 0.9 }, t + 0.01, 0.25 * strength, { attack: 0.003, release: 0.2 })
 }
 
-/** Correct steps climb the scale (`step` = correct steps in a row); a wrong step is a falling, dissonant buzz. */
-export function puzzleStep(kit: AudioKit, tone: RegionTone, ok: boolean, step: number) {
+/**
+ * A correct step rings its pillar / node note when `index` is known, otherwise it climbs the scale (`step` = correct
+ * steps in a row). A wrong step is a falling, dissonant buzz.
+ */
+export function puzzleStep(kit: AudioKit, tone: RegionTone, ok: boolean, step: number, index?: number) {
   const voice = createVoice(kit, { reverb: 0.4, echo: ok ? 0.2 : 0 }, true)
   if (!voice) return
   const t = kit.ctx.currentTime + 0.005
   if (ok) {
-    const frequency = scaleNote(tone, step, 3)
+    const frequency = scaleNote(tone, index === undefined ? step : stepDegree(index), 3)
     bell(voice, frequency, t, 0.26, 2.4)
     oscillator(voice, 'triangle', frequency / 2, t, 0.08, { attack: 0.01, release: 1.2 })
     return
@@ -272,6 +294,59 @@ export function discovery(kit: AudioKit, kind: keyof typeof DISCOVERY, tone: Reg
     bell(voice, scaleNote(tone, degree, chime.octave), t + i * chime.spacing, chime.level, 2.6)
   })
   if (kind === 'item') oscillator(voice, 'sine', tone.root * 2, t, 0.22, { attack: 0.6, hold: 0.8, release: 2.5 })
+}
+
+/** A ghost singer sings pillar `index` during the Choir replay. It is the player's memory aid, so it is never dropped. */
+export function choirNote(kit: AudioKit, tone: RegionTone, index: number, at: Vec3) {
+  const t = kit.ctx.currentTime + 0.01
+  const degree = stepDegree(index)
+  const sung = scaleNote(tone, degree, 2)
+  choir(kit, at, [sung, sung * 2], t, { attack: 0.18, hold: 0.7, release: 1.1 }, 0.42, true)
+  const voice = createVoice(kit, { at, ref: 12, reverb: 0.5, echo: 0.2 }, true)
+  if (voice) bell(voice, scaleNote(tone, degree, 3), t + 0.05, 0.14, 2.2)
+}
+
+/** A phase object starts its expiry flicker: a wavering, sinking tone with a dry crackle. */
+export function phaseWarn(kit: AudioKit, tone: RegionTone, at: Vec3) {
+  const voice = createVoice(kit, { at, ref: 10, reverb: 0.35 }, true)
+  if (!voice) return
+  const { ctx } = kit
+  const t = ctx.currentTime + 0.005
+  const tremolo = new GainNode(ctx, { gain: 0.5 })
+  tremolo.connect(voice.input)
+  const lfo = new OscillatorNode(ctx, { frequency: 8 })
+  const lfoDepth = new GainNode(ctx, { gain: 0.5 })
+  lfo.connect(lfoDepth).connect(tremolo.gain)
+  voice.play(lfo, t, t + 1.6)
+  const frequency = scaleNote(tone, 4, 3)
+  for (const ratio of [1, 1.012]) {
+    const wail = oscillator(voice, 'triangle', frequency * ratio, t, 0.09, { attack: 0.02, hold: 0.9, release: 0.5 }, tremolo)
+    wail.frequency.exponentialRampToValueAtTime(frequency * ratio * 0.84, t + 1.4)
+  }
+  noise(voice, { type: 'highpass', frequency: 4200 }, t, 0.03, { attack: 0.05, hold: 0.8, release: 0.4 })
+}
+
+/** The Listening Stone wakes: the whole chord opens up under a choir and a deep swell, heard everywhere. */
+export function finale(kit: AudioKit, tone: RegionTone) {
+  const voice = createVoice(kit, { reverb: 0.7, echo: 0.3 }, true)
+  if (!voice) return
+  const { ctx } = kit
+  const t = ctx.currentTime + 0.02
+  const filter = new BiquadFilterNode(ctx, { type: 'lowpass', frequency: 300, Q: 0.7 })
+  filter.frequency.setValueAtTime(300, t)
+  filter.frequency.exponentialRampToValueAtTime(4200, t + 6)
+  filter.connect(voice.input)
+  tone.chord.forEach((semitone, i) => {
+    const frequency = tone.root * 2 * 2 ** (semitone / 12)
+    for (const detune of [-6, 5]) {
+      const pad = oscillator(voice, 'sawtooth', frequency, t + i * 0.25, 0.035, { attack: 5, hold: 3, release: 6 }, filter)
+      pad.detune.value = detune
+    }
+  })
+  oscillator(voice, 'sine', tone.root, t, 0.4, { attack: 3, hold: 4, release: 5 })
+  const sung = tone.chord.slice(0, 3).map((semitone) => tone.root * 4 * 2 ** (semitone / 12))
+  choir(kit, null, sung, t + 2, { attack: 3, hold: 3, release: 5 }, 0.3, true)
+  for (let i = 0; i < 8; i++) bell(voice, scaleNote(tone, i, 3), t + 4 + i * 0.35, 0.12, 4)
 }
 
 /** Pause menu open (falling blip pair) / close (rising). */

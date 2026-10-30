@@ -7,7 +7,7 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
 - [x] Review the plan and reply in coordination §6 (4 non-blocking points + optional audio-hook Request in §7;
       waiting for A's answer)
 - [x] M3d data: `gameplay/content.ts` + `gameplay/progression.ts` (implements `ProgressView`), objective + notices HUD
-- [ ] M4 Procedural audio (`audio/audio.ts`), volume + mute
+- [x] M4 Procedural audio (`audio/*.ts`), volume + mute, A's four audio hooks
 - [ ] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
 - [ ] M5b Touch controls, perf overlay, auto-quality
 - [ ] M6 prep (README checklist, known limitations)
@@ -30,12 +30,29 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   `components/echo/progress-hud.tsx`: top-left objective (detail collapses after 12 s) + notice cards (body clamped
   to 3 lines below `sm`). `@keyframes echo-rise` in `app/globals.css`.
 - `ids.ts`: `ProgressView` gained `checkpoint` and `completed` (coordination §6, point 1).
+- **Audio** (`game/audio/`, all procedural, no files). `audio.ts` `AudioEngine` (`Game.audio`): the AudioContext is
+  built on the first pointer/key/touch gesture (or at once if `navigator.userActivation` says the page was already
+  clicked, e.g. after a remount) and suspended while the tab is hidden. Graph: buses sfx / ambience / reverb
+  (convolver, generated IR) / echo (damped feedback delay) → pause duck (`PAUSE_DUCK` 0.35) → master (volume²) →
+  compressor; the ui bus skips the duck. Cues run only while the context is running. `kit.ts`: `createVoice()`
+  (optional `PannerNode` at a world position, reverb / echo sends, voice count; non-essential voices are skipped above
+  `MAX_VOICES` 28), `envelope()`, noise buffers, IR. `ambience.ts`: `REGION_TONES` (root, chord, scale, filter cutoff,
+  wind per region; every melodic cue uses the current region's key) and `Ambience` (drone chord crossfaded on
+  `regionEnter` / `respawn`, wind gusts). `sfx.ts`: pulse, reveal per `ReactiveKind` (spatial; crystal bells keep one
+  note per formation; `REVEAL_SPACING` stops stacking), footsteps per `Surface`, land, puzzle step (per-pillar / node
+  note when `index` is set, else a climbing streak; wrong = buzz), solved, discovery chimes, pause open / close, and
+  A's hooks: `choirNote` (sung pillar note + bell, essential), `phaseWarn` (wavering tone, one per 0.4 s),
+  `finaleStart` (long swell + choir, non-spatial). `endingStart` plays a big solved arpeggio.
+  Settings `volume` (default 0.8) + `muted` (`echo.settings.v1`); `Game.setVolume()` (raising it un-mutes),
+  `setMuted()`, `toggleMute()` (`M`, input action `mute`); `uiStore.volume` / `.muted`. Pause menu has a volume slider
+  + mute toggle; `components/echo/audio-indicator.tsx` = "Muted" chip above the pulse ring while muted.
+  Dev: `__echo.audio.graph.kit.voices` (live voices), `__echo.audio.running`.
 
-## Save path (IMPORTANT, since 2026-10-30)
+## Save path
 
-Chat B's account (GitHub `tspencer164-5346`) has **no write access** to `krushnahon99-netizen/SciFI-Game`. When the
-owner connected Git, v0 created a new private repo for this chat instead: `tspencer164-5346/v0-fvADj3yECIo` (its
-`main` = B's M3d-data commit `3ffdcf4`; later B saves go to branch `v0/lane-b` there via SyncGit). Until access is fixed:
+Since the M4 chat (wvSLwZ4KYnz), B's chats are imported from SciFI-Game itself and push there normally (coordination
+§5: lane branch `v0/echo-b-<step>`, then `git push origin HEAD:main`). Old fallback, only if a B account again has no
+write access (as GitHub `tspencer164-5346` had, whose work went to its own repo `tspencer164-5346/v0-fvADj3yECIo`):
 - B pulls A's work anonymously (public repo): `git remote add scifi https://github.com/krushnahon99-netizen/SciFI-Game.git`
   then `git fetch scifi main && git merge scifi/main`.
 - B's work reaches SciFI-Game `main` only when someone with access merges it, e.g. Chat A after the owner makes the B repo
@@ -43,17 +60,15 @@ owner connected Git, v0 created a new private repo for this chat instead: `tspen
 
 ## Next steps
 
-1. Check the save path above, then coordination §6 / §7 for A's answer.
-2. **M4 audio** (not started) (`game/audio/audio.ts`, new). `AudioEngine`: `AudioContext` created / resumed on the first
-   pointerdown or keydown (autoplay policy); master gain → compressor → destination; buses ambience / sfx / ui.
-   Ambience: per-region drone chords crossfaded on `regionEnter` (3–4 detuned oscillators, slow filter LFO) and wind
-   (looped noise buffer → bandpass, slow random gusts). SFX: pulse (sub thump + rising shimmer), crystal resonance on
-   `reactiveHit` kind `crystal` (FM bell through a `PannerNode` at the hit position), reveal shimmer for the other
-   reactive kinds, footsteps per `Surface` (filtered noise bursts), `land`, `puzzleStep` ok / wrong, `puzzleSolved`
-   chord, discovery chime for fragment / secret / item, duck on pause. Listener: `audio.update(dt, camera)` in
-   `Game.update`. Settings: `volume` (0–1) + `muted` in `core/settings.ts`; `M` toggles mute (check `input.ts` for an
-   action, add one if missing); volume slider + mute in the pause menu.
-3. Then M5a and M5b as in the status list.
+1. After every pull, check coordination §7 for requests to B. (A answered everything in §6 / §7: plan AGREED.)
+2. **M5a** UI, in this order, saving after each part:
+   - M5a-1 title screen (phase `'title'`: live world behind it, Continue if `Progression.hasSave()`, New journey =
+     `progression.discard()` + remount) and the skippable intro (`INTRO` text + `CameraRig.setCinematic()`).
+   - M5a-2 pause menu tabs: journal (fragments, places, secrets, hints from `fails`) / settings / controls (`CONTROLS`).
+   - M5a-3 end screen on `endingStart` (stats from progression, "keep exploring" → free roam).
+3. Then M5b (touch controls, perf overlay polish, auto-quality).
+4. Not testable yet: footsteps / land / puzzle / discovery cues fire only once Lane A emits those events (M3c / M3d);
+   the M4 check fired them by hand through `__echo.events.emit(...)`.
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -64,3 +79,5 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | review | 2026-10-30 | Replied in coordination §6: 4 non-blocking points (`ProgressView.checkpoint` / `completed` added, no runtime reset, all text in content.ts, optional audio hooks requested in §7). |
 | M3d-data | 2026-10-30 | `content.ts` (all text), `progression.ts` (events → save, objective, hints, notices), Game.ts wiring, store fields, HUD objective + notices. tsc clean; browser-verified (objective, fragment + secret notices, save written). |
 | save | 2026-10-30 | Push to SciFI-Game blocked (B's account has no access); work backed up to `tspencer164-5346/v0-fvADj3yECIo` (`main` 3ffdcf4, branch `v0/lane-b`). Stopped at LOW credits before M4. |
+| M4 | 2026-10-30 | Chat wvSLwZ4KYnz: procedural audio (`kit`, `ambience`, `sfx`, `audio`), volume + mute settings, pause-menu audio controls, Muted chip. tsc clean; browser-verified (context starts on click, all cues fire, voices drain to 0, mute saved, pause duck). Ran out of credits ($5) before saving: v0 auto-committed it as `09822f2` on `v0/continue-v0-project-a8245fce`, never on `main`. |
+| M4-save | 2026-10-30 | Next B chat: merged `09822f2` plus A's unpushed M3a-4 save (`1691bda` on `v0/echo-a-m3b`; Game.ts conflict = both fields kept), subscribed audio to A's hooks (`puzzleStep.index`, `choirNote`, `phaseWarn`, `finaleStart`), docs. tsc clean, hooks browser-verified. |
