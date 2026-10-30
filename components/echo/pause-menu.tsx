@@ -1,16 +1,20 @@
 'use client'
 
+import { Volume2, VolumeX } from 'lucide-react'
+import { SETTINGS_TEXT } from '@/game/gameplay/content'
 import { QUALITY_LEVELS, QUALITY_PRESETS } from '@/game/render/quality'
 import { cn } from '@/lib/utils'
 import { useGame } from './game-context'
 import { useUI } from './use-ui'
 
-/** Minimal pause menu with graphics settings. The full menu (journal, controls, audio) arrives in M5a. */
+/** Minimal pause menu with audio and graphics settings. The full menu (journal, controls) arrives in M5a. */
 export function PauseMenu() {
   const game = useGame()
   const phase = useUI((state) => state.phase)
   const quality = useUI((state) => state.quality)
   const renderScale = useUI((state) => state.renderScale)
+  const volume = useUI((state) => state.volume)
+  const muted = useUI((state) => state.muted)
 
   if (phase !== 'paused') return null
 
@@ -19,6 +23,7 @@ export function PauseMenu() {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     game?.resume()
   }
+  const volumePercent = Math.round(volume * 100)
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/55 p-4 backdrop-blur-[2px]">
@@ -33,8 +38,43 @@ export function PauseMenu() {
         </h2>
 
         <fieldset className="mt-6">
-          <legend className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">Graphics quality</legend>
-          <div role="radiogroup" aria-label="Graphics quality" className="mt-2 grid grid-cols-4 gap-1.5">
+          <legend className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">{SETTINGS_TEXT.audio}</legend>
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={muted}
+              aria-label={SETTINGS_TEXT.mute}
+              onClick={() => game?.toggleMute()}
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                muted
+                  ? 'border-primary/70 bg-primary/15 text-primary'
+                  : 'border-border text-foreground/80 hover:border-foreground/30 hover:text-foreground',
+              )}
+            >
+              {muted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={volumePercent}
+              aria-label={SETTINGS_TEXT.volume}
+              aria-valuetext={muted ? SETTINGS_TEXT.muted : `${volumePercent}%`}
+              onChange={(event) => game?.setVolume(Number(event.target.value) / 100)}
+              className={cn('min-w-0 flex-1 accent-primary', muted && 'opacity-50')}
+            />
+            <span className="w-12 shrink-0 text-right font-mono text-xs text-foreground/85">
+              {muted ? SETTINGS_TEXT.muted : `${volumePercent}%`}
+            </span>
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-5">
+          <legend className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">{SETTINGS_TEXT.graphics}</legend>
+          <div role="radiogroup" aria-label={SETTINGS_TEXT.graphics} className="mt-2 grid grid-cols-4 gap-1.5">
             {QUALITY_LEVELS.map((level) => {
               const selected = quality === level
               return (
@@ -60,7 +100,7 @@ export function PauseMenu() {
 
         <label className="mt-5 block">
           <span className="flex items-baseline justify-between text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-            Render scale
+            {SETTINGS_TEXT.renderScale}
             <span className="font-mono tracking-normal text-foreground/85">{Math.round(renderScale * 100)}%</span>
           </span>
           <input

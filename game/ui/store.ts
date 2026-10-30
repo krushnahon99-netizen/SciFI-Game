@@ -42,6 +42,9 @@ export interface UIState {
   progress: ProgressSnapshot | null
   /** Discovery notices, oldest first; the HUD removes each one after showing it. */
   notices: readonly Notice[]
+  /** Master volume 0–1 and mute (pause menu; M toggles mute). */
+  volume: number
+  muted: boolean
 }
 
 type Listener = () => void
@@ -100,4 +103,6 @@ export const uiStore = createStore<UIState>({
   // --- Lane B ---
   progress: null,
   notices: [],
+  volume: 0.8,
+  muted: false,
 })

@@ -330,6 +330,7 @@ export const SETTINGS_TEXT = {
   audio: 'Audio',
   volume: 'Master volume',
   mute: 'Mute',
+  muted: 'Muted',
   graphics: 'Graphics quality',
   renderScale: 'Render scale',
   auto: 'Auto',

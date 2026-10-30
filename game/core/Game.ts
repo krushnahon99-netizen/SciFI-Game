@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
 import { Progression } from '../gameplay/progression'
@@ -34,6 +35,8 @@ export class Game {
   readonly reactives: ReactiveRegistry
   /** Saved progress (lane B); built before the World so builders can read it as a ProgressView. */
   readonly progression: Progression
+  /** Procedural audio (lane B); its AudioContext starts on the first user gesture. */
+  readonly audio: AudioEngine
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -71,6 +74,11 @@ export class Game {
 
     this.input = new Input(this.renderSystem.canvas, this.events)
     this.progression = new Progression(this.events)
+    this.audio = new AudioEngine(this.events, {
+      volume: this.settings.volume,
+      muted: this.settings.muted,
+      region: this.progression.checkpoint,
+    })
     this.reactives = new ReactiveRegistry(this.events)
     this.world = new World(this.scene, quality, this.reactives)
     this.player = new Player(this.world.collision, SPAWN)
@@ -94,6 +102,8 @@ export class Game {
       lookMode: this.input.lookMode,
       quality: quality.level,
       renderScale: this.settings.renderScale,
+      volume: this.settings.volume,
+      muted: this.settings.muted,
       perf: { ...uiStore.getState().perf, gpu: this.renderSystem.gpu.name },
     })
     // Dev-only console/automation handle, e.g. `__echo.player.position.set(x, y, z)` to teleport.
@@ -139,12 +149,29 @@ export class Game {
     this.applyQuality()
   }
 
+  /** Raising the volume also un-mutes. */
+  setVolume(volume: number) {
+    this.settings.volume = THREE.MathUtils.clamp(volume, 0, 1)
+    if (this.settings.volume > 0) this.settings.muted = false
+    this.applyAudio()
+  }
+
+  setMuted(muted: boolean) {
+    this.settings.muted = muted
+    this.applyAudio()
+  }
+
+  toggleMute() {
+    this.setMuted(!this.settings.muted)
+  }
+
   dispose() {
     if (this.disposed) return
     this.disposed = true
     this.renderSystem.renderer.setAnimationLoop(null)
     this.input.dispose()
     this.progression.dispose()
+    this.audio.dispose()
     this.avatar.dispose()
     this.echo.dispose()
     this.reactives.dispose()
@@ -185,6 +212,13 @@ export class Game {
     this.events.emit('quality', { level: quality.level })
   }
 
+  private applyAudio() {
+    this.audio.setVolume(this.settings.volume)
+    this.audio.setMuted(this.settings.muted)
+    saveSettings(this.settings)
+    uiStore.setState({ volume: this.settings.volume, muted: this.settings.muted })
+  }
+
   private readonly frame = (now: number) => {
     if (this.disposed) return
     const dt = this.lastFrameTime < 0 ? 1 / 60 : Math.min((now - this.lastFrameTime) / 1000, MAX_FRAME_DT)
@@ -220,6 +254,7 @@ export class Game {
     }
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
+    this.audio.update(dt, this.camera)
   }
 
   /** Q / click: pulse from the explorer's backpack core (from the camera while free-flying). */
@@ -246,6 +281,7 @@ export class Game {
   private handleSystemActions() {
     const input = this.input
     if (input.wasPressed('perf')) this.togglePerf()
+    if (input.wasPressed('mute')) this.toggleMute()
     if (input.wasPressed('freecam') && this.phase === 'playing') this.toggleFreeCam()
     if (input.wasPressed('pause') && performance.now() - this.phaseChangedAt > PHASE_TOGGLE_DEBOUNCE_MS) {
       if (this.phase === 'playing') this.pause()
