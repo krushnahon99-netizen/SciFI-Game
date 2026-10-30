@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
 import { Progression } from '../gameplay/progression'
+import { RegionTracker } from '../gameplay/regions'
 import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
 import { Player } from '../player/player'
@@ -34,6 +35,7 @@ export class Game {
   readonly reactives: ReactiveRegistry
   /** Saved progress (lane B); built before the World so builders can read it as a ProgressView. */
   readonly progression: Progression
+  readonly regions: RegionTracker
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -80,6 +82,7 @@ export class Game {
     this.avatar.update(0, this.player, 0)
     this.cameraRig.update(0, this.player.position)
     this.echo = new EchoSystem(this.scene, this.events)
+    this.regions = new RegionTracker(this.events)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -152,7 +155,7 @@ export class Game {
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
     this.events.clear()
-    uiStore.setState({ booted: false, phase: 'boot', pointerLocked: false })
+    uiStore.setState({ booted: false, phase: 'boot', pointerLocked: false, region: null })
   }
 
   // --- Internals -------------------------------------------------------------------------------
@@ -217,6 +220,7 @@ export class Game {
       }
       this.avatar.update(playing ? dt : 0, this.player, this.time)
       this.cameraRig.update(dt, this.player.position)
+      if (playing) this.regions.update(this.player.position)
     }
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
