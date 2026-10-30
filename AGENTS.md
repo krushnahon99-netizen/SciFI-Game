@@ -47,6 +47,7 @@ cache-write $5 per 1M tokens):
 | Writing ~1,000 lines of code | ~$0.35 all-in |
 | One credit check, cheap way (below) | ~$0.03–0.05 |
 | One credit check, naive way (broad tool searches, listing chats, paging events) | ~$0.50 |
+| Long planning kept only in the model's reasoning (no files written) | ~$1.5–2.5, lost at session end |
 
 **When to check: by time and checkpoints, never by guessing.** Cost depends on effort, length and
 complexity, so estimates are unreliable (a guess in the M0.1 chat said $3.00 left; the real number was $1.63).
@@ -58,7 +59,8 @@ Track time for free: run `date -u +%H:%M` at session start, and add `; date -u +
 already run (installs, builds). No extra steps needed. Only tell the owner a balance from a real check.
 
 **Cheap real check (v0 only):**
-1. Once per session: `tool_search_tool_bm25` with query `credit usage summary` and **`limit: 1`**.
+1. Once per session: `tool_search_tool_bm25` with query `usage getSummary` and **`limit: 1`**
+   (the query `credit usage summary` surfaced `listEvents` instead, costing an extra step).
    Broad searches dump ~10 huge tool schemas into context; that is what made the first check cost $0.50.
 2. Call the surfaced `v0_usage_getSummary_*` with `start` = session start (ISO UTC). It is read-only.
 3. `left = Budget − credits.total − 0.20` (data lags ~1 min; the running reply isn't fully counted).
@@ -136,10 +138,12 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
    keep the `World` API (`applyQuality`, `update(dt, time, focus)`, `heightAt`, `dispose`) and the sun/hemi lights.
    Bloom params can be tuned via `RenderSystem.setBloom()`. Then M1c → M2a → … one sub-milestone at a time.
 2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
-   **2026-10-30: two sessions stopped before writing code.** No M1b files exist yet. The design and the
-   implementation notes below are final. **Don't re-derive them; start coding** in this order: `noise.ts` → `layout.ts` →
-   `terrain.ts` → `render/shaderChunks.ts` → `materials.ts` → `sky.ts` → `mountains.ts` → wire into `world.ts`,
-   `Game.ts` (spawn) and `quality.ts` (viewDistance) → one browser check → tune → save.
+   **2026-10-30: three sessions stopped before writing code** (the 3rd spent ~$3.2 of $5 on reading files plus one
+   long planning pass that was never written down). No M1b files exist yet. The design and notes below are final.
+   **Don't re-derive or re-plan; write code in the first step.** Order: `noise.ts` + `layout.ts` → commit/push →
+   `terrain.ts` → `render/shaderChunks.ts` → `materials.ts` → `sky.ts` → `mountains.ts` (commit/push after every
+   1–2 files; unimported files are fine if `tsc` passes) → wire into `world.ts`, `Game.ts` (spawn) and `quality.ts`
+   (viewDistance) → one browser check → tune → save.
 
 **M1b design (decided — implement as written, tune visually):**
 - **Sun moves to the west** (side-light at spawn, shadows fall east): `SUN_DIRECTION = normalize(-0.92, 0.30, -0.25)`
@@ -232,6 +236,14 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
   three ≥ r155 has no implicit π in light units, so expect sun ≈ 4–6 and hemi ≈ 1 after tuning.
 - Until M3a, a placeholder Sundered Monolith at `MONOLITH` (two leaning stone slabs + emissive ring) checks shadows and
   bloom. viewDistance presets: 1600 / 1800 / 2000 / 2400.
+- Gotchas found 2026-10-30 (3rd session): `DataTexture` defaults to `NearestFilter`, so set Linear explicitly; the
+  361-wide R16F shadow texture needs `unpackAlignment = 2` (722-byte rows aren't 4-byte aligned). GLSL `smoothstep`
+  with reversed edges is undefined (fine in JS). Spire: `h = lerp(h, 3, 1−ss(40,80,r)) + hill(r)` so the ramp heights
+  (3 + 3.1 → 45 m) match the surface; fade the ramp in with `ss(0, 0.03, s)` (avoids a wall at its start). Hall:
+  `h = lerp(h, 2, corridor·core)`, where core is the ridge falloff, so the floor doesn't step at the corridor ends.
+  Mountains: march a bilinear lookup of the precomputed polar height grid (fast). Quads `(a,b,c),(b,d,c)` with
+  a=(s,k), b=(s+1,k), c=(s,k+1) face up. A ±1 % multiplicative dither is too weak in sRGB output: add ±0.5/255
+  interleaved-gradient noise when the output is sRGB. `World.update(dt, time, focus, viewer = focus)` (viewer → LOD).
 
 ## 5. Architecture / file map
 
@@ -323,3 +335,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1a | 2026-10-29 | Engine bootstrap: three r186, loop/phases, input (pointer lock + drag fallback), renderer + bloom composer, quality presets, settings persistence, HUD/perf/pause UI, test scene. tsc clean, browser-verified. |
 | M1b-plan | 2026-10-30 | Owner stopped the session early: no code written. Full M1b design saved in §4 (layout coordinates, terrain/fog/sky/shadow approach). |
 | M1b-notes | 2026-10-30 | 2nd session also ended before any code (owner: "save all"). Saved M1b implementation notes in §4: fog colour-space handling, O(N) terrain shadow sweep, chunk/skirt/LOD layout, program cache key, sky/mountain details, concrete ridge/trail coordinates. Lesson: design is done, so the next session should go straight to code. |
+| M1b-notes3 | 2026-10-30 | 3rd session, still no code: ~$3.2 spent on reading files + an unsaved planning pass, then the owner said "save". Added gotchas (DataTexture filters, R16F `unpackAlignment`, Spire/Hall formulas, faster mountain shadows, dither) and fixed the credit-check query. Lesson: write files in the first step and push every 1–2 files. |
