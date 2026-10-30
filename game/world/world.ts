@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { ReactiveRegistry } from '../echo/reactive'
 import { Collision } from '../physics/collision'
 import type { QualitySettings } from '../render/quality'
 import { installEchoFog, sharedUniforms } from '../render/shaderChunks'
@@ -6,6 +7,7 @@ import { MONOLITH, SUN_DIRECTION } from './layout'
 import { createEnergyMaterial, createNoiseTexture, createStoneMaterial, createTerrainMaterial } from './materials'
 import { createMountains } from './mountains'
 import { createSky } from './sky'
+import { buildCradleEchoes } from './structures/cradle'
 import { Terrain } from './terrain'
 
 export { SUN_DIRECTION } from './layout'
@@ -36,6 +38,7 @@ export class World {
   constructor(
     private readonly scene: THREE.Scene,
     settings: QualitySettings,
+    reactives: ReactiveRegistry,
   ) {
     installEchoFog()
     const fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY)
@@ -58,6 +61,7 @@ export class World {
     scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
 
     this.buildPlaceholderMonolith()
+    buildCradleEchoes({ scene, collision: this.collision, reactives })
     this.applyQuality(settings)
   }
 

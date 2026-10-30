@@ -5,6 +5,8 @@ interface ColliderBase {
   z: number
   minY: number
   maxY: number
+  /** Disabled colliders are ignored by every query (phase objects toggle this). */
+  enabled: boolean
   /** Query stamp, so a collider registered in several hash cells is visited once per query. */
   mark: number
 }
@@ -99,7 +101,7 @@ export class Collision {
   }
 
   addCylinder(x: number, z: number, radius: number, minY: number, maxY: number): CylinderCollider {
-    const collider: CylinderCollider = { kind: 'cylinder', x, z, radius, minY, maxY, mark: 0 }
+    const collider: CylinderCollider = { kind: 'cylinder', x, z, radius, minY, maxY, enabled: true, mark: 0 }
     this.insert(collider, radius)
     return collider
   }
@@ -115,6 +117,7 @@ export class Collision {
       sin: Math.sin(yaw),
       minY,
       maxY,
+      enabled: true,
       mark: 0,
     }
     this.insert(collider, Math.hypot(halfX, halfZ))
@@ -214,7 +217,7 @@ export class Collision {
         const list = this.cells.get(cellKey(ix, iz))
         if (!list) continue
         for (const c of list) {
-          if (c.mark === stamp) continue
+          if (c.mark === stamp || !c.enabled) continue
           c.mark = stamp
           found.push(c)
         }

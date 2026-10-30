@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { EchoSystem } from '../echo/echoSystem'
+import { ReactiveRegistry } from '../echo/reactive'
 import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
 import { Player } from '../player/player'
@@ -29,6 +30,7 @@ export class Game {
   readonly input: Input
   readonly world: World
   readonly echo: EchoSystem
+  readonly reactives: ReactiveRegistry
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -65,7 +67,8 @@ export class Game {
     this.renderSystem.resize()
 
     this.input = new Input(this.renderSystem.canvas, this.events)
-    this.world = new World(this.scene, quality)
+    this.reactives = new ReactiveRegistry(this.events)
+    this.world = new World(this.scene, quality, this.reactives)
     this.player = new Player(this.world.collision, SPAWN)
     this.avatar = new Avatar()
     this.scene.add(this.avatar.root)
@@ -89,6 +92,8 @@ export class Game {
       renderScale: this.settings.renderScale,
       perf: { ...uiStore.getState().perf, gpu: this.renderSystem.gpu.name },
     })
+    // Dev-only console/automation handle, e.g. `__echo.player.position.set(x, y, z)` to teleport.
+    if (process.env.NODE_ENV !== 'production') Object.assign(window, { __echo: this })
   }
 
   get qualitySettings(): QualitySettings {
@@ -137,6 +142,7 @@ export class Game {
     this.input.dispose()
     this.avatar.dispose()
     this.echo.dispose()
+    this.reactives.dispose()
     this.world.dispose()
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
@@ -193,6 +199,7 @@ export class Game {
     const playing = this.phase === 'playing'
     if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
     this.echo.update(playing ? dt : 0)
+    this.reactives.update(this.echo.clock, playing ? dt : 0)
     if (this.spectator) {
       if (playing) this.spectator.update(dt, this.input, (x, z) => this.world.heightAt(x, z))
     } else {

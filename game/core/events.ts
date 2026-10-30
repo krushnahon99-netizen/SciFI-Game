@@ -1,3 +1,4 @@
+import type { ReactiveKind } from '../echo/reactive'
 import type { QualityLevel } from '../render/quality'
 import type { LookMode } from './input'
 
@@ -11,6 +12,8 @@ export interface GameEvents {
   lookMode: { mode: LookMode }
   /** An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot. */
   pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number }
+  /** The wavefront reached a reactive object (echo/reactive.ts); `time` is the arrival on the play clock. */
+  reactiveHit: { kind: ReactiveKind; position: { x: number; y: number; z: number }; time: number }
 }
 
 type Handler<T> = (payload: T) => void
