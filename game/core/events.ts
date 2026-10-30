@@ -18,6 +18,8 @@ export interface GameEvents {
 
   // --- Lane A (world & gameplay) emits these; see docs/coordination.md §4 ---
   regionEnter: { id: RegionId }
+  /** The player fell into the chasm and was put back at the current region's spawn (null before the first region). */
+  playerRespawn: { region: RegionId | null }
   footstep: { surface: Surface; run: boolean }
   /** Touchdown after a fall; `impact` is the downward speed in m/s. */
   land: { impact: number }
