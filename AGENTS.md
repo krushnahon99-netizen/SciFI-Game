@@ -239,7 +239,12 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 (if `origin` isn't GitHub: `git remote add github https://github.com/krushnahon99-netizen/SciFI-Game.git`).
 
 - Never commit secrets. `.env*` files must stay ignored (check `git status` before committing).
-- 401/403 on push: the chat has no GitHub credentials; ask the owner to connect GitHub (v0 → Settings → Git).
+- 401/403 on push, or SyncGit says "no write access" (`gh api repos/krushnahon99-netizen/SciFI-Game` shows
+  `push: false`): the chat's GitHub access is missing or stale; ask the owner to reconnect/verify GitHub
+  (v0 → Settings → Git), then retry once.
+- **Unsaved work from an earlier chat?** Run `git ls-remote origin` first: a chat that ran out of credits may have
+  pushed its `v0/echo-*` branch without reaching `main`. If that branch is ahead of `main`
+  (`git merge-base --is-ancestor main <branch>`), check it out, run tsc, and fast-forward `main` from it.
 
 ## 8. Known issues & limitations
 
@@ -261,3 +266,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1b-notes3 | 2026-10-30 | 3rd session, still no code: ~$3.2 spent on reading files + an unsaved planning pass, then the owner said "save". Added gotchas (DataTexture filters, R16F `unpackAlignment`, Spire/Hall formulas, faster mountain shadows, dither) and fixed the credit-check query. Lesson: write files in the first step and push every 1–2 files. |
 | M1b | 2026-10-30 | 4th session: M1b code was already on `main` (M1b-1, M1b-3) but the docs weren't updated. Browser-verified; tuned the planet notch, layered ranges and trail edges; condensed the M1b design/notes into §4 "Engine notes". |
 | M1c | 2026-10-30 | Player: collision (hash, colliders, camera clearance), controller (run/jump/slope limit), procedural avatar + animation, third-person camera rig with cinematic API, F4 free cam. tsc clean; browser-verified spawn + running. |
+| M1c-save | 2026-10-30 | 5th session (new account): the M1c chat ran out of credits while fighting a push-access error, so M1c (`9a88f7a`) was only on branch `v0/echo-m1c`, not `main`. Verified tsc, fast-forwarded `main` to it, added the recovery steps to §7. |
