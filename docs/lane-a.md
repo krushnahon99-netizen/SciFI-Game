@@ -22,7 +22,18 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     dense in the Vale, wavefront flare + outward shove; `setBudget()` = `particleBudget`.
   - `materials.ts`: `createCrystalMaterial()`, `MaterialVariant` (extra vertex hooks) for stone/crystal variants.
   - Browser-verified on Low (SwiftShader): ribs, Choir, formations, lanterns, pulse → past-state + ghost choir + flare.
-- [ ] M3a-4 Regions + HUD region title
+- [x] M3a-4 Regions + HUD region title:
+  - `layout.ts`: `REGION_AREAS` (priority-ordered circle / box / band volumes; Undervault before Works; the chasm band
+    covers only the stretch north of the ridge) and `REGION_SPAWNS` (one per region on the arrival trail, built with
+    `spawnFacing()`; the Undervault one is provisional until M3b). All 7 spawns browser-checked: inside their own
+    volume, slope ≤ 24°, no collider push.
+  - `gameplay/regions.ts` `RegionTracker` (`Game.regions`, updated every playing frame from the player position): first
+    containing area wins, the current area is widened by `EXIT_MARGIN` (4 m), gaps keep the last region. On change it
+    sets `uiStore.region` and emits `regionEnter` (fires for the Cradle on the first frame).
+  - `components/echo/region-title.tsx` (one line in `hud.tsx`): Michroma name card, rules grow out of a diamond, 5.2 s
+    WAAPI fade (opacity only with reduced motion), `role="status"`. Names are a stand-in map until B's `content.ts`
+    (Request in coordination §7).
+  - Browser-verified: Cradle title at start, Hall title on teleport, a gap keeps Hall, then Vale (log `hall, vale`).
 - [ ] M3b Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates
 - [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
 - [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
@@ -30,9 +41,10 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
 ## Next steps
 
 1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3a-4 `gameplay/regions.ts`: region volumes from `layout.ts` (+ spawn point per region), `regionEnter` event,
-   `uiStore.region`; small HUD title component mounted with one line in `hud.tsx`.
-3. Then M3b (Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates).
+2. M3b structures, one sub-milestone each: Glass Bridge chasm (pads, phase planks), Conduit Works (facility + door
+   gate), Undervault (sunken chamber; then fix its volume and spawn in `layout.ts`), Listening Spire (ramp top, energy
+   barrier).
+3. Later (M3d): respawn on fall / void = `player.teleport()` to `REGION_SPAWNS[regions.current]`.
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -42,3 +54,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | --- | --- | --- |
 | setup | 2026-10-30 | Parallel mode set up: coordination plan, lane files, contracts in `gameplay/ids.ts`, `core/events.ts`, `ui/store.ts`. |
 | M3a-3 | 2026-10-30 | Singing Vale (Choir, ribs, formations, echoes), world scatter, ambient particles; phase expiry verified. tsc clean, browser-verified. B had not replied in §6 yet. |
+| M3a-4 | 2026-10-30 | Region volumes + spawn points (`layout.ts`), `RegionTracker` (`regionEnter`, `uiStore.region`), HUD region title. tsc clean, browser-verified. Still no reply from B in §6. |

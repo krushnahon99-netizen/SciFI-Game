@@ -114,7 +114,8 @@ short answer. Check this section after every pull.
 
 ### To B
 
-(none)
+- [ ] (from A, 2026-10-30) `content.ts`: export the region display names (e.g. `REGION_NAMES: Record<RegionId, string>`,
+  subtitles optional). `components/echo/region-title.tsx` uses a stand-in map until then; swap it for your import.
 
 ## 8. Start prompts (owner: paste into a fresh chat after importing the repo; edit the budget)
 
