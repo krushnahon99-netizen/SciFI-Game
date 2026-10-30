@@ -128,6 +128,14 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
       `runeInlay()`, broken ring turning in the gap, climbable fallen top, half-sunk capstone, dark ring arc, merged rubble,
       9 standing stones on a 19 m ring; colliders for all) + `buildCradleEchoes()`. Placeholder removed from `world.ts`;
       `PastStateOverlay` intensity 1.1 → 0.8. tsc clean; not browser-checked yet.
+    - [x] **M3a-2** Hall of Echoes: `world/structures/hall.ts` `buildHall()` returns `Hall { altar, pillars[4] (position +
+      own glyph material, dim until lit), gate: HallGate }`, kept as `World.hall` for M3c. South portal (z 118, snapped
+      lintel with glyph band), ruined colonnade (`RUIN` table, fallen drums + lintel), masonry wall facing, sanctum
+      (2-tier dais, altar, hovering resonator, 4 glyph pillars with distinct sigils), sealed north gate (z 76;
+      `open(instant?)` slides the leaves into the pylons and disables the door collider past 45 %), rubble, intact-temple
+      `PastStateOverlay`, 2 crystal clusters. Shared helpers: `world/geometry.ts` (`mergeParts`, `block`).
+      Browser-verified: portal, sanctum + pulse hologram, open gate. Until M3c the closed gate seals the north half;
+      dev: `__echo.world.hall.gate.open()`.
   - [ ] **M3b** Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates.
   - [ ] **M3c** Puzzles: Choir Sequence, Glass Bridge, Dormant Grid (`gameplay/puzzles.ts`, `interactables.ts`).
   - [ ] **M3d** Progression: `content.ts` (all text), memory fragments, 3 secrets, objectives, journal data, save/load (`progression.ts`), respawn, ending.
@@ -142,8 +150,9 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 1. Quick checks first (cheap): phase stone expiry at the Ghost Garden (teleport onto the first stone right after a pulse,
    read `__echo.player.position.y` once `echo.clock` > pulse + 8). Note: the HUD FPS is computed from capped dt, so it
    overstates FPS on SwiftShader. Still untested from M1c: slope limit at the ridge, monolith collider push, camera pull-in.
-2. **M3a** (see §3): M3a-1 (monolith) is done; next the Hall of Echoes (`world/structures/hall.ts`), then the Singing
-   Vale (`vale.ts`), scatter, particles, `gameplay/regions.ts`.
+2. **M3a** (see §3): M3a-1 (monolith) and M3a-2 (Hall) are done; next **M3a-3** the Singing Vale
+   (`world/structures/vale.ts`: crystal formations, scatter, particles), then **M3a-4** `gameplay/regions.ts`
+   (area discovery + HUD region title).
 3. Then M3b → M3c → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
    (file, function, what is left).
 
@@ -272,3 +281,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M2a | 2026-10-30 | 6th session: browser-verified the pulse. Shell was a view-filling veil from inside (angle-independent wall term) → now fresnel-rim only with near-camera fade; glyphs got their own saturated tint and a sparser mask; front ×1.6. Jump verified. |
 | M2b | 2026-10-30 | 6th session: reactive registry + 5 reactive types + Cradle echo content (see §3). tsc clean, browser-verified except phase expiry. Saved at $0.27 left. |
 | M3a-1 | 2026-10-30 | 7th session (chat h1YhUrArccr) built the Sundered Monolith (see §3) but ran out of credits right after pushing `v0/echo-m3a`, so it never reached `main` and these docs weren't updated. 8th session: tsc clean, fast-forwarded `main`, updated docs. |
+| M3a-2 | 2026-10-30 | 8th session: Hall of Echoes (see §3). tsc clean, browser-verified. |

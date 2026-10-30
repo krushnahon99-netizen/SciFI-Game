@@ -7,8 +7,9 @@ import { SUN_DIRECTION } from './layout'
 import { createNoiseTexture, createTerrainMaterial } from './materials'
 import { createMountains } from './mountains'
 import { createSky } from './sky'
-import type { Animator } from './structures/context'
+import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
+import { buildHall, type Hall } from './structures/hall'
 import { Terrain } from './terrain'
 
 export { SUN_DIRECTION } from './layout'
@@ -23,6 +24,8 @@ export class World {
   readonly hemi = new THREE.HemisphereLight('#7f8fc0', '#3a2a22', 1.2)
   readonly terrain: Terrain
   readonly collision: Collision
+  /** Hall of Echoes handles (altar, glyph pillars, gate) for the Choir Sequence. */
+  readonly hall: Hall
 
   private readonly noiseTexture: THREE.DataTexture
   private readonly sunTarget = new THREE.Object3D()
@@ -59,7 +62,14 @@ export class World {
     this.collision = new Collision((x, z) => this.terrain.heightAt(x, z))
     scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
 
-    buildCradle({ scene, collision: this.collision, reactives, animate: (animator) => this.animators.push(animator) })
+    const context: StructureContext = {
+      scene,
+      collision: this.collision,
+      reactives,
+      animate: (animator) => this.animators.push(animator),
+    }
+    buildCradle(context)
+    this.hall = buildHall(context)
     this.applyQuality(settings)
   }
 
