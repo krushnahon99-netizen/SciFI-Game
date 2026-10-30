@@ -22,7 +22,8 @@ void main() {
 }
 `
 
-// Additive: a fresnel rim plus a ~10 m tall wall around the emitter's height, broken up by drifting streaks.
+// Additive fresnel bubble: bright at the silhouette and almost invisible face-on, so once the camera is inside the
+// shell (most of its life) it no longer veils the view; the ground wavefront carries the effect from there.
 const SHELL_FRAGMENT = /* glsl */ `
 uniform sampler2D uEchoNoise;
 uniform vec3 uOrigin;
@@ -32,13 +33,17 @@ varying vec3 vShellWorld;
 varying vec3 vShellNormal;
 varying vec2 vShellUv;
 void main() {
-  vec3 toCamera = normalize(cameraPosition - vShellWorld);
-  float rim = pow(1.0 - abs(dot(normalize(vShellNormal), toCamera)), 3.0);
-  float h = vShellWorld.y - uOrigin.y;
-  float wall = exp(-h * h * 0.02);
-  float streak = smoothstep(0.3, 0.75, texture(uEchoNoise, vec2(vShellUv.x * 6.0, vShellUv.y * 2.0 - uAge * 0.6)).r);
-  float glow = (0.5 * rim + 0.45 * wall) * (0.35 + 1.1 * streak) * uLife;
-  gl_FragColor = vec4(vec3(0.32, 0.86, 1.0) * glow, 1.0);
+  vec3 toCamera = cameraPosition - vShellWorld;
+  float camDist = length(toCamera);
+  float facing = dot(normalize(vShellNormal), toCamera / camDist);
+  float rim = pow(1.0 - abs(facing), 4.0);
+  float outer = facing > 0.0 ? 1.0 : 0.4;
+  float h = max(vShellWorld.y - uOrigin.y, 0.0);
+  float low = 0.35 + 0.65 * exp(-h * 0.08);
+  float near = smoothstep(1.5, 8.0, camDist);
+  float streak = smoothstep(0.35, 0.8, texture(uEchoNoise, vec2(vShellUv.x * 6.0, vShellUv.y * 2.0 - uAge * 0.6)).r);
+  float glow = rim * outer * low * near * (0.5 + 0.9 * streak) * uLife * 0.9;
+  gl_FragColor = vec4(vec3(0.25, 0.8, 1.0) * glow, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }

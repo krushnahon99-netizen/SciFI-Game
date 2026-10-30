@@ -119,7 +119,7 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
   - [x] **M1b** World look (details: §4 Engine notes). `noise.ts`, `layout.ts`, `terrain.ts` (analytic height → 361² heightmap → LOD chunks + skirts, splat + baked sun-shadow textures), `render/shaderChunks.ts` (height fog, `patchWorldMaterial`), `materials.ts`, `sky.ts` (ringed planet, sun, stars, clouds), `mountains.ts`, placeholder monolith in `world.ts`, bloom on Medium+. Tuned: `PLANET_NOTCH` (low rim + ranges under the planet), ranges rise with distance, softer trail edges. Browser-verified on Low and High.
   - [x] **M1c** Player. `physics/collision.ts` (`Collision`, owned by `World`: heightmap ground + normal, cylinder / yaw-box colliders in a 16 m hash, `resolveCharacter()` with walkable tops, `clearance()` sphere march for the camera); `player/player.ts` (walk 4.5 / run 8 m/s, jump with coyote + buffer, 40° slope limit with sliding, ground snap); `player/avatar.ts` (primitive explorer, glowing visor + backpack core, procedural idle/walk/run/air/landing); `player/camera.ts` (`CameraRig`: orbit, shoulder offset, wheel zoom, pull-in on hits, `setCinematic()`/`clearCinematic()`); `Game.ts` wiring (F4 = free-fly debug camera; shadow focus = player). Monolith has box colliders. Browser-verified: spawn view, running + camera follow. Not yet exercised in the browser: jumping, slope limit, collider push, camera pull-in.
 - **M2 — Echo pulse**
-  - [ ] **M2a** `echo/echoSystem.ts`: 2 pulse slots in shared uniforms, `onBeforeCompile` wavefront + glyph reveal, expanding shell, Q/click input + cooldown, HUD cooldown.
+  - [x] **M2a** `echo/pulseShader.ts` (tuning constants + world-material GLSL `echoPulseEmission`: wavefront band, Truchet circuit-glyph reveal fading over 6 s), `echo/echoSystem.ts` (2 slots in `sharedUniforms.uEchoPulses`, play clock `uEchoClock` frozen while paused, 2.5 s cooldown, additive fresnel shell per slot, `pulse` event `{ origin, time, slot }`), avatar core flare, HUD charge ring (`components/echo/pulse-indicator.tsx`). Browser-verified + tuned (shell is rim-only so it doesn't veil the view from inside; glyphs use a saturated tint so they stay cyan). Jump verified.
   - [ ] **M2b** `echo/reactive.ts` registry: glyph path markers, memory ghosts, past-state overlays, reactive crystals, phase objects.
 - **M3 — World, puzzles, progression**
   - [ ] **M3a** Structures: Cradle + Sundered Monolith, Hall of Echoes, Singing Vale (`world/structures/*.ts`), scatter, particles, `gameplay/regions.ts`.
@@ -134,15 +134,9 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 
 ## 4. Next steps (ordered — start at the top)
 
-1. **M2a** Echo pulse (see §3). Plan (decided — implement, then tune):
-   - `echo/echoSystem.ts`: 2 pulse slots in `sharedUniforms` (`uEchoPulses: vec4[2]` = origin xyz + start time; radius =
-     (time − start) × 24 m/s up to 70 m; slot reused round-robin). `patchWorldMaterial` gets a default emissive term so
-     every world material shows the travelling wavefront (thin bright band ~3 m) plus a glyph reveal behind it (procedural
-     glyph lines from `uEchoNoise`, fading over ~6 s). An expanding additive fresnel shell mesh per slot.
-   - Input: `pulse` action (Q / left click while locked / tap in drag mode) with a 2.5 s cooldown; avatar backpack core
-     flares. HUD: cooldown ring in `hud.tsx` via a throttled `uiStore` field (`pulseCharge` 0…1).
-   - Emit `pulse` on `game.events` ({ origin, time }) for the M2b reactive registry.
-   - While here, exercise in the browser what M1c didn't: jumping, slope limit at the ridge, monolith collider push.
+1. **M2b** Reactive registry (see §3). Listen to the `pulse` event; each reactive object gets the time the wavefront
+   reaches it (`distance / PULSE_SPEED`) and runs its own reveal envelope on the play clock (`echo.clock`).
+   Still untested in the browser from M1c: slope limit at the ridge, monolith collider push, camera pull-in.
 2. Then M2b → M3a → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
    (file, function, what is left).
 
@@ -268,3 +262,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1c | 2026-10-30 | Player: collision (hash, colliders, camera clearance), controller (run/jump/slope limit), procedural avatar + animation, third-person camera rig with cinematic API, F4 free cam. tsc clean; browser-verified spawn + running. |
 | M1c-save | 2026-10-30 | 5th session (new account): the M1c chat ran out of credits while fighting a push-access error, so M1c (`9a88f7a`) was only on branch `v0/echo-m1c`, not `main`. Verified tsc, fast-forwarded `main` to it, added the recovery steps to §7. |
 | M2a-wip | 2026-10-30 | Same session, credits ran out mid-check. M2a written: `game/echo/pulseShader.ts` (constants + world-material GLSL: wavefront band, Truchet glyph reveal), `game/echo/echoSystem.ts` (2 slots, play clock `uEchoClock`, 2.5 s cooldown, additive shell meshes, `pulse` event), avatar core flare + release pose, HUD charge ring (`components/echo/pulse-indicator.tsx`). tsc clean; NOT visually verified. **Next session: open the game, press Q, check wavefront/glyphs/shell/ring, tune, then tick M2a in §3 and move §4 to M2b.** |
+| M2a | 2026-10-30 | 6th session: browser-verified the pulse. Shell was a view-filling veil from inside (angle-independent wall term) → now fresnel-rim only with near-camera fade; glyphs got their own saturated tint and a sparser mask; front ×1.6. Jump verified. |

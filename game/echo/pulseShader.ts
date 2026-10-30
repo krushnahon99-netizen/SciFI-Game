@@ -25,6 +25,8 @@ const float ECHO_PULSE_SPEED = ${f(PULSE_SPEED)};
 const float ECHO_PULSE_RADIUS = ${f(PULSE_RADIUS)};
 const float ECHO_GLYPH_DURATION = ${f(GLYPH_DURATION)};
 const vec3 ECHO_PULSE_TINT = vec3(0.32, 0.86, 1.0);
+// More saturated than the front so the lit glyphs stay cyan instead of clipping to white.
+const vec3 ECHO_GLYPH_TINT = vec3(0.16, 0.68, 1.0);
 
 float echoHash(vec2 c) {
   return fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
@@ -67,7 +69,7 @@ vec3 echoPulseEmission(vec3 p, vec3 n) {
   vec2 plane = an.y > 0.7 ? p.xz : (an.x > an.z ? p.zy : p.xy);
   vec2 uv = plane;
   float lines = echoGlyphLines(uv);
-  float mask = smoothstep(0.55, 0.66, texture(uEchoNoise, uv * 0.03 + 0.21).r);
+  float mask = smoothstep(0.58, 0.68, texture(uEchoNoise, uv * 0.03 + 0.21).r);
 
   float front = 0.0;
   float reveal = 0.0;
@@ -87,6 +89,6 @@ vec3 echoPulseEmission(vec3 p, vec3 n) {
     ignite = max(ignite, shown * exp(-since * 1.4));
   }
   float flicker = 0.85 + 0.15 * sin(uEchoTime * 11.0 + p.x * 0.7 + p.z * 0.5);
-  return ECHO_PULSE_TINT * (front * 2.0 + lines * mask * (reveal * 0.55 + ignite * 1.6) * flicker);
+  return ECHO_PULSE_TINT * front * 1.6 + ECHO_GLYPH_TINT * lines * mask * (reveal * 0.4 + ignite * 1.1) * flicker;
 }
 `
