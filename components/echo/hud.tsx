@@ -4,6 +4,7 @@ import { AudioIndicator } from './audio-indicator'
 import { PerfOverlay } from './perf-overlay'
 import { ProgressHud } from './progress-hud'
 import { PulseIndicator } from './pulse-indicator'
+import { RegionTitle } from './region-title'
 import { useUI } from './use-ui'
 
 export function Hud() {
@@ -20,6 +21,7 @@ export function Hud() {
     <div className="pointer-events-none absolute inset-0 z-10">
       <PerfOverlay />
       <ProgressHud />
+      <RegionTitle />
       <div className="absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-3 px-4">
         {playing && <PulseIndicator />}
         {playing && <AudioIndicator />}

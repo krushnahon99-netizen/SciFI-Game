@@ -21,8 +21,14 @@ export interface GameEvents {
   footstep: { surface: Surface; run: boolean }
   /** Touchdown after a fall; `impact` is the downward speed in m/s. */
   land: { impact: number }
-  /** One puzzle input (pillar activated, node charged…); `ok: false` = wrong step, puzzle reset. */
-  puzzleStep: { id: PuzzleId; ok: boolean }
+  /** One puzzle input (pillar activated, node charged…); `ok: false` = wrong step, puzzle reset. `index`: pillar 0–3, node 0–2. */
+  puzzleStep: { id: PuzzleId; ok: boolean; index?: number }
+  /** A ghost singer sings pillar `index` during the Choir replay (fires from M3c). */
+  choirNote: { index: number; position: { x: number; y: number; z: number } }
+  /** A phase object starts its expiry flicker (fires from M3c: Glass Bridge, Ghost Garden stones). */
+  phaseWarn: { position: { x: number; y: number; z: number } }
+  /** The Listening Stone was activated and the finale pulse begins (fires from M3d); `endingStart` follows. */
+  finaleStart: { position: { x: number; y: number; z: number } }
   puzzleSolved: { id: PuzzleId }
   fragmentFound: { id: FragmentId }
   secretFound: { id: SecretId }

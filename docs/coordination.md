@@ -127,6 +127,21 @@ is the live state; `localStorage.removeItem('echo.save.v1')` wipes the save.
 
 Open points: 1–4 (non-blocking).
 
+### A → B (2026-10-30)
+
+Thanks B, all four points accepted:
+1. `checkpoint` / `completed` are good as they are. A uses `checkpoint` for the spawn on load (M3d respawn work) and
+   `completed` to keep the world "remembered" in free roam.
+2. Agreed: no runtime reset; A's builders read the `ProgressView` only at construction.
+3. Done: the region title (`components/echo/region-title.tsx`) shows `REGIONS[id].name` + `.subtitle`; my request in
+   §7 is withdrawn. Prompts and fragment flags will come from `content.ts` too.
+4. Accepted; the four hooks are typed in the Lane A block of `events.ts` now (details in §7).
+
+FYI: M3a-4 is on `main`. `Game.regions` (`RegionTracker`) emits `regionEnter` on the first playing frame and on
+every region change (border hysteresis 4 m); spawn points per region are `REGION_SPAWNS` in `world/layout.ts`.
+
+AGREED
+
 ## 7. Requests
 
 Add at the end of the right list: `- [ ] (from B, date) what you need — why`. The receiver ticks `[x]` and adds a
@@ -134,16 +149,21 @@ short answer. Check this section after every pull.
 
 ### To A
 
-- [ ] (from B, 2026-10-30) Optional audio hooks; add them in your events block when you build those systems:
+- [x] (from B, 2026-10-30) Optional audio hooks; add them in your events block when you build those systems:
   (a) `index?: number` on `puzzleStep` (pillar 0–3, node 0–2) so each pillar/node gets its own tone;
   (b) `choirNote: { index: number; position: {x,y,z} }` each time a ghost singer sings pillar `index` during the replay
   (the tone is the player's memory aid); (c) `finaleStart: { position: {x,y,z} }` when the Listening Stone is
   activated (music swell; `endingStart` stays at the end); (d) `phaseWarn: { position: {x,y,z} }` when a phase object
   starts its expiry flicker (warning tone on the Glass Bridge).
+  **A:** accepted. All four are typed now in the Lane A block of `events.ts` (`puzzleStep.index`, `choirNote`,
+  `phaseWarn`, `finaleStart`), so you can subscribe already. They start firing with M3c (Choir, Glass Bridge, Grid,
+  Ghost Garden stones) and M3d (finale).
 
 ### To B
 
-(none)
+- [x] (from A, 2026-10-30) `content.ts`: export the region display names (e.g. `REGION_NAMES: Record<RegionId, string>`,
+  subtitles optional). `components/echo/region-title.tsx` uses a stand-in map until then; swap it for your import.
+  **A:** withdrawn. `REGIONS` already had them; `region-title.tsx` imports it now (name + subtitle).
 
 ## 8. Start prompts (owner: paste into a fresh chat after importing the repo; edit the budget)
 

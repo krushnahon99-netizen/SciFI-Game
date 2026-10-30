@@ -1,4 +1,5 @@
 import { Vector3 } from 'three'
+import type { RegionId } from '../gameplay/ids'
 
 /**
  * ALL world coordinates live here (single source of truth).
@@ -236,3 +237,59 @@ export const TRAILS: readonly Polyline[] = [
   new Polyline([[150, -150], [162, -110], [168, -60], [164, -14]]),
   new Polyline([[150, -150], [176, -178]]),
 ]
+
+// ---------------------------------------------------------------- region volumes + spawn points (gameplay/regions.ts)
+
+export type RegionShape =
+  | { readonly kind: 'circle'; readonly x: number; readonly z: number; readonly radius: number }
+  | { readonly kind: 'box'; readonly x: number; readonly z: number; readonly halfX: number; readonly halfZ: number }
+  | { readonly kind: 'band'; readonly line: Polyline; readonly halfWidth: number }
+
+export interface RegionArea {
+  readonly id: RegionId
+  readonly shape: RegionShape
+}
+
+/**
+ * Discovery volumes in priority order: the first area containing the player wins, so nested areas come before
+ * their surroundings (Undervault inside the Works). Gaps between areas keep the last region (see regions.ts).
+ */
+export const REGION_AREAS: readonly RegionArea[] = [
+  { id: 'undervault', shape: { kind: 'circle', x: UNDERVAULT.x, z: UNDERVAULT.z, radius: 18 } },
+  { id: 'hall', shape: { kind: 'box', x: HALL.x, z: HALL.z, halfX: HALL.halfWidth + 6, halfZ: HALL.halfLength } },
+  // Only the stretch north of the ridge around the bridge: the chasm's tip is buried in the ridge above the Cradle.
+  {
+    id: 'chasm',
+    shape: { kind: 'band', line: new Polyline(CHASM.line.points.slice(1, 5)), halfWidth: CHASM.halfWidth + 17 },
+  },
+  { id: 'works', shape: { kind: 'circle', x: WORKS.x, z: WORKS.z, radius: WORKS.radius + 6 } },
+  { id: 'spire', shape: { kind: 'circle', x: SPIRE.x, z: SPIRE.z, radius: SPIRE.footRadius + 10 } },
+  { id: 'vale', shape: { kind: 'circle', x: VALE.x, z: VALE.z, radius: VALE.radius } },
+  { id: 'cradle', shape: { kind: 'circle', x: CRADLE.x, z: CRADLE.z, radius: CRADLE.radius + 20 } },
+]
+
+export interface SpawnPoint {
+  readonly x: number
+  readonly z: number
+  /** Player/camera yaw: 0 faces north (−z), +π/2 faces west. */
+  readonly yaw: number
+}
+
+/** Spawn at (x, z) looking toward (tx, tz). */
+function spawnFacing(x: number, z: number, tx: number, tz: number): SpawnPoint {
+  return { x, z, yaw: Math.atan2(x - tx, z - tz) }
+}
+
+/**
+ * Respawn point per region (new game, load, falls): on the trail where the player arrives, inside the region's
+ * volume. The Undervault one is provisional until M3b builds the chamber.
+ */
+export const REGION_SPAWNS: Readonly<Record<RegionId, SpawnPoint>> = {
+  cradle: SPAWN,
+  hall: spawnFacing(-69, 130, HALL.x, HALL.z),
+  vale: spawnFacing(-84, 34, CHOIR.x, CHOIR.z),
+  chasm: spawnFacing(0, -39, BRIDGE.x, BRIDGE.z),
+  works: spawnFacing(118, -117, WORKS.x, WORKS.z),
+  undervault: spawnFacing(168, -169.4, UNDERVAULT.x, UNDERVAULT.z),
+  spire: spawnFacing(165.4, -30, SPIRE.x, SPIRE.z),
+}
