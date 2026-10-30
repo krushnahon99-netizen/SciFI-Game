@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { EchoSystem } from '../echo/echoSystem'
 import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
 import { Player } from '../player/player'
@@ -16,6 +17,8 @@ const MAX_FRAME_DT = 0.1
 const PERF_SAMPLE_SECONDS = 0.5
 /** Esc can both exit pointer lock (→ pause) and arrive as a key press; ignore toggles right after a phase change. */
 const PHASE_TOGGLE_DEBOUNCE_MS = 300
+/** Height of the backpack core (the pulse emitter) above the player's feet. */
+const PULSE_EMITTER_HEIGHT = 1.3
 
 /** Owns the loop, the phase state machine and every engine system. The React UI talks to it through public methods. */
 export class Game {
@@ -25,8 +28,10 @@ export class Game {
   readonly renderSystem: RenderSystem
   readonly input: Input
   readonly world: World
+  readonly echo: EchoSystem
 
   private readonly settings: Settings
+  private readonly pulseOrigin = new THREE.Vector3()
   private readonly player: Player
   private readonly avatar: Avatar
   private readonly cameraRig: CameraRig
@@ -67,6 +72,7 @@ export class Game {
     this.cameraRig = new CameraRig(this.camera, this.world.collision, SPAWN.yaw)
     this.avatar.update(0, this.player, 0)
     this.cameraRig.update(0, this.player.position)
+    this.echo = new EchoSystem(this.scene, this.events)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -130,6 +136,7 @@ export class Game {
     this.renderSystem.renderer.setAnimationLoop(null)
     this.input.dispose()
     this.avatar.dispose()
+    this.echo.dispose()
     this.world.dispose()
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
@@ -184,6 +191,8 @@ export class Game {
     this.time += dt
     this.handleSystemActions()
     const playing = this.phase === 'playing'
+    if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
+    this.echo.update(playing ? dt : 0)
     if (this.spectator) {
       if (playing) this.spectator.update(dt, this.input, (x, z) => this.world.heightAt(x, z))
     } else {
@@ -198,6 +207,18 @@ export class Game {
     }
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
+  }
+
+  /** Q / click: pulse from the explorer's backpack core (from the camera while free-flying). */
+  private emitPulse() {
+    const origin = this.pulseOrigin
+    if (this.spectator) {
+      origin.copy(this.camera.position)
+    } else {
+      origin.copy(this.player.position)
+      origin.y += PULSE_EMITTER_HEIGHT
+    }
+    if (this.echo.trigger(origin)) this.avatar.flare()
   }
 
   /** F4: detach a free-fly debug camera from the player (and back). */

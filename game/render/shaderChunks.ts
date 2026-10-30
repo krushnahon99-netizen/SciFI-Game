@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { PULSE_GLSL, PULSE_INACTIVE, PULSE_SLOTS } from '../echo/pulseShader'
 import { SUN_DIRECTION, TERRAIN_UV_SCALE } from '../world/layout'
 
 /** Exponential height-fog falloff per metre (density = fogDensity · e^(−falloff · y)). */
@@ -98,6 +99,10 @@ export function installEchoFog() {
 /** Uniforms shared by every patched world material (one update drives them all). */
 export const sharedUniforms = {
   uEchoTime: { value: 0 },
+  /** Play clock the pulses are timed on (frozen while paused); written by EchoSystem. */
+  uEchoClock: { value: 0 },
+  /** Per pulse slot: emitter position (xyz) + start time on uEchoClock (w). */
+  uEchoPulses: { value: Array.from({ length: PULSE_SLOTS }, () => new THREE.Vector4(0, 0, 0, PULSE_INACTIVE)) },
   uEchoNoise: { value: null as THREE.Texture | null },
   uTerrainShadow: { value: null as THREE.Texture | null },
   uTerrainSplat: { value: null as THREE.Texture | null },
@@ -135,6 +140,7 @@ vec3 echoPerturbNormal(vec3 surfPos, vec3 surfNormal, float height) {
   vec3 grad = sign(det) * (dFdx(height) * r1 + dFdy(height) * r2);
   return normalize(abs(det) * surfNormal - grad);
 }
+${PULSE_GLSL}
 `
 
 const WORLD_POSITION_VERTEX = /* glsl */ `
@@ -181,11 +187,15 @@ export interface WorldMaterialPatch {
   emissive?: string
   /** GLSL float expression multiplied into the sun's light (default: baked terrain shadow). */
   sunVisibility?: string
+  /** Draw the echo pulse wavefront and glyph reveal on this surface (default true). */
+  pulse?: boolean
 }
 
 /** Injects shared uniforms, world-space varyings, terrain sun shadow and per-material hooks into a built-in material. */
 export function patchWorldMaterial<T extends THREE.Material>(material: T, patch: WorldMaterialPatch): T {
   const withNormal = !('isMeshBasicMaterial' in material)
+  const withPulse = patch.pulse !== false
+  const pulseEmission = withPulse ? 'totalEmissiveRadiance += echoPulseEmission(vWorldPos, normalize(vWorldNormal));' : ''
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, sharedUniforms, patch.uniforms)
     shader.vertexShader = shader.vertexShader
@@ -203,13 +213,13 @@ export function patchWorldMaterial<T extends THREE.Material>(material: T, patch:
       .replace('#include <color_fragment>', `#include <color_fragment>\n${patch.color ?? ''}`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\n${patch.roughness ?? ''}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${patch.normal ?? ''}`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${patch.emissive ?? ''}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${patch.emissive ?? ''}\n${pulseEmission}`)
       .replace(
         '#include <lights_fragment_begin>',
         patchedLightsBegin(patch.sunVisibility ?? 'echoTerrainSunVisibility(vWorldPos)'),
       )
   }
   // The default key is onBeforeCompile.toString(), identical for every patched material → wrong program reuse.
-  material.customProgramCacheKey = () => `echo:${patch.key}`
+  material.customProgramCacheKey = () => `echo:${patch.key}${withPulse ? '' : ':nopulse'}`
   return material
 }

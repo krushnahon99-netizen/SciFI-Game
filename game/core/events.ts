@@ -9,6 +9,8 @@ export interface GameEvents {
   quality: { level: QualityLevel }
   pointerLock: { locked: boolean }
   lookMode: { mode: LookMode }
+  /** An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot. */
+  pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number }
 }
 
 type Handler<T> = (payload: T) => void

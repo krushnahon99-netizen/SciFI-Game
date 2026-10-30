@@ -26,6 +26,8 @@ export interface UIState {
   perf: PerfSnapshot
   quality: QualityLevel
   renderScale: number
+  /** Echo pulse charge: 0 right after a pulse … 1 ready (quantised by the engine). */
+  pulseCharge: number
 }
 
 type Listener = () => void
@@ -75,4 +77,5 @@ export const uiStore = createStore<UIState>({
   perf: { fps: 0, frameMs: 0, cpuMs: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0, pixelRatio: 1, gpu: '' },
   quality: 'high',
   renderScale: 1,
+  pulseCharge: 1,
 })

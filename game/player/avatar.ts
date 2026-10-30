@@ -4,6 +4,11 @@ import { createEnergyMaterial } from '../world/materials'
 import type { Player } from './player'
 
 const HIP_HEIGHT = 0.95
+const CORE_GLOW = 2.2
+/** Extra backpack-core emissive at the moment of a pulse. */
+const CORE_FLARE = 16
+/** Flare fades over 1 / FLARE_DECAY seconds. */
+const FLARE_DECAY = 1.4
 
 const smooth = (edge0: number, edge1: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
@@ -15,7 +20,7 @@ const damp = (value: number, target: number, rate: number, dt: number) =>
 function suitMaterial(color: THREE.ColorRepresentation, roughness: number, metalness = 0) {
   const material = new THREE.MeshStandardMaterial({ color, roughness, metalness })
   material.name = 'echo.avatar'
-  return patchWorldMaterial(material, { key: 'avatar' })
+  return patchWorldMaterial(material, { key: 'avatar', pulse: false })
 }
 
 interface Limb {
@@ -34,6 +39,9 @@ export class Avatar {
   private readonly arms: [Limb, Limb]
   private readonly materials: THREE.Material[] = []
   private readonly geometries: THREE.BufferGeometry[] = []
+  /** Backpack core (own material so it can flare without the visor). */
+  private readonly core: THREE.MeshStandardMaterial
+  private flareLevel = 0
   private phase = 0
   private move = 0
   private run = 0
@@ -45,7 +53,8 @@ export class Avatar {
     this.root.name = 'avatar'
     const suit = this.track(suitMaterial('#c9bba6', 0.82))
     const armor = this.track(suitMaterial('#3b3f48', 0.55, 0.35))
-    const glow = this.track(createEnergyMaterial('#6ff3ff', 2.2))
+    const glow = this.track(createEnergyMaterial('#6ff3ff', CORE_GLOW))
+    this.core = this.track(createEnergyMaterial('#6ff3ff', CORE_GLOW))
 
     this.hips.position.y = HIP_HEIGHT
     this.root.add(this.hips)
@@ -56,7 +65,7 @@ export class Avatar {
     this.torso = this.part(this.spine, new THREE.CapsuleGeometry(0.2, 0.3, 6, 14), suit, [0, 0.3, 0], [1.08, 1, 0.74])
     this.part(this.spine, new THREE.BoxGeometry(0.3, 0.17, 0.07), armor, [0, 0.4, -0.13])
     this.part(this.spine, new THREE.BoxGeometry(0.34, 0.42, 0.16), armor, [0, 0.33, 0.17])
-    this.part(this.spine, new THREE.CylinderGeometry(0.045, 0.045, 0.3, 12), glow, [0, 0.33, 0.26])
+    this.part(this.spine, new THREE.CylinderGeometry(0.045, 0.045, 0.3, 12), this.core, [0, 0.33, 0.26])
     this.part(this.spine, new THREE.TorusGeometry(0.13, 0.035, 8, 20), armor, [0, 0.6, 0], [1, 1, 1], [Math.PI / 2, 0, 0])
 
     this.head.position.y = 0.72
@@ -88,6 +97,9 @@ export class Avatar {
     if (player.landingSpeed > 2) this.land = Math.min(1, player.landingSpeed / 12)
     this.land = damp(this.land, 0, 7, dt)
     this.lean = damp(this.lean, THREE.MathUtils.clamp(-player.turnRate * player.horizontalSpeed * 0.02, -0.28, 0.28), 8, dt)
+    this.flareLevel = Math.max(0, this.flareLevel - dt * FLARE_DECAY)
+    const release = this.flareLevel * this.flareLevel
+    this.core.emissiveIntensity = CORE_GLOW + CORE_FLARE * release
 
     const stride = THREE.MathUtils.lerp(1.05, 1.5, this.run)
     this.phase += ((speed * dt) / stride) * Math.PI
@@ -101,7 +113,8 @@ export class Avatar {
     this.hips.rotation.z = this.lean
     this.hips.rotation.y = s * 0.1 * this.move
     this.spine.rotation.y = -s * 0.16 * this.move
-    this.spine.rotation.x = -(0.05 * this.move + 0.2 * this.run) * ground - 0.12 * this.air + 0.18 * this.land
+    this.spine.rotation.x =
+      -(0.05 * this.move + 0.2 * this.run) * ground - 0.12 * this.air + 0.18 * this.land - 0.14 * release
     this.torso.scale.y = 1 + 0.02 * breathe
     this.head.rotation.x = -this.spine.rotation.x * 0.6
     this.head.rotation.y = Math.sin(time * 0.37) * 0.15 * (1 - this.move)
@@ -118,9 +131,14 @@ export class Avatar {
 
       const arm = this.arms[side]
       arm.upper.rotation.x = -legSwing * 0.85 * ground - 0.35 * this.air
-      arm.upper.rotation.z = -dir * (0.08 + 0.55 * this.air + 0.1 * this.run)
+      arm.upper.rotation.z = -dir * (0.08 + 0.55 * this.air + 0.1 * this.run + 0.45 * release)
       arm.lower.rotation.x = (0.18 + 0.35 * this.move + 0.55 * this.run) * ground + 0.6 * this.air
     }
+  }
+
+  /** Backpack core flare + a brief arms-out release pose (call when a pulse fires). */
+  flare() {
+    this.flareLevel = 1
   }
 
   dispose() {
