@@ -135,7 +135,13 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 1. **M1b** (see §3). Replace `World.buildTestScene()` and the flat `World.heightAt()` with real terrain/sky;
    keep the `World` API (`applyQuality`, `update(dt, time, focus)`, `heightAt`, `dispose`) and the sun/hemi lights.
    Bloom params can be tuned via `RenderSystem.setBloom()`. Then M1c → M2a → … one sub-milestone at a time.
-2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
+2. **M1b in progress (2026-10-30 session):** written but NOT wired in yet (nothing imports them): `core/math.ts`,
+   `world/noise.ts`, `world/layout.ts` (all coordinates + the 3 sealed route bands), `render/shaderChunks.ts`
+   (shared uniforms, `patchMaterial`, height-fog override), `world/terrain.ts` (height field, heightmap, LOD chunks),
+   `world/materials.ts`, `world/sky.ts`, `world/mountains.ts`. Left: rewrite `world/world.ts` to use them (drop
+   `buildTestScene`), spawn from `layout.SPAWN` in `Game.ts`, pass the camera position to `World.update` for terrain
+   LOD, browser check + tuning, then tick M1b.
+3. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
 
 ## 5. Architecture / file map
 
