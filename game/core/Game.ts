@@ -3,6 +3,7 @@ import { Spectator } from '../player/spectator'
 import { QUALITY_PRESETS, type QualityLevel, type QualitySettings } from '../render/quality'
 import { RenderSystem, disposeObject3D } from '../render/renderer'
 import { uiStore } from '../ui/store'
+import { SPAWN } from '../world/layout'
 import { World } from '../world/world'
 import { Emitter, type GameEvents, type GamePhase } from './events'
 import { Input } from './input'
@@ -53,7 +54,8 @@ export class Game {
 
     this.input = new Input(this.renderSystem.canvas, this.events)
     this.world = new World(this.scene, quality)
-    this.spectator = new Spectator(this.camera, new THREE.Vector3(0, 6, 30))
+    const spawn = new THREE.Vector3(SPAWN.x, this.world.heightAt(SPAWN.x, SPAWN.z) + 3.2, SPAWN.z)
+    this.spectator = new Spectator(this.camera, spawn, SPAWN.yaw)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })

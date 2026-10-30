@@ -1,17 +1,27 @@
 import * as THREE from 'three'
 import type { QualitySettings } from '../render/quality'
+import { installEchoFog, sharedUniforms } from '../render/shaderChunks'
+import { MONOLITH, SUN_DIRECTION } from './layout'
+import { createEnergyMaterial, createNoiseTexture, createStoneMaterial, createTerrainMaterial } from './materials'
+import { createMountains } from './mountains'
+import { createSky } from './sky'
+import { Terrain } from './terrain'
 
-/** Unit vector from the world towards the low, dying amber sun. */
-export const SUN_DIRECTION = new THREE.Vector3(-0.45, 0.26, -0.85).normalize()
-const SUN_DISTANCE = 220
+export { SUN_DIRECTION } from './layout'
+
+const SUN_DISTANCE = 300
+const FOG_COLOR = '#5b4b66'
+const FOG_DENSITY = 0.0034
 
 type Animator = (dt: number, time: number) => void
 
 /** Assembles the environment and owns global lighting (sun + sky fill) and the player-following shadow frustum. */
 export class World {
-  readonly sun = new THREE.DirectionalLight('#ffb37e', 3.2)
-  readonly hemi = new THREE.HemisphereLight('#8090c0', '#3b2c25', 0.85)
+  readonly sun = new THREE.DirectionalLight('#ffbf8a', 5)
+  readonly hemi = new THREE.HemisphereLight('#7f8fc0', '#3a2a22', 1.2)
+  readonly terrain: Terrain
 
+  private readonly noiseTexture: THREE.DataTexture
   private readonly sunTarget = new THREE.Object3D()
   private readonly animators: Animator[] = []
   private shadowRadius = 40
@@ -25,8 +35,10 @@ export class World {
     private readonly scene: THREE.Scene,
     settings: QualitySettings,
   ) {
-    scene.background = new THREE.Color('#2b2842')
-    scene.fog = new THREE.FogExp2('#4b3f56', 0.0075)
+    installEchoFog()
+    const fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY)
+    scene.fog = fog
+    scene.background = new THREE.Color(FOG_COLOR)
     this.sun.target = this.sunTarget
     scene.add(this.sun, this.sunTarget, this.hemi)
 
@@ -34,7 +46,15 @@ export class World {
     this.lightRight.crossVectors(this.lightForward, THREE.Object3D.DEFAULT_UP).normalize()
     this.lightUp.crossVectors(this.lightRight, this.lightForward).normalize()
 
-    this.buildTestScene()
+    this.noiseTexture = createNoiseTexture(settings.anisotropy)
+    sharedUniforms.uEchoNoise.value = this.noiseTexture
+    this.terrain = new Terrain()
+    sharedUniforms.uTerrainShadow.value = this.terrain.shadowTexture
+    sharedUniforms.uTerrainSplat.value = this.terrain.splatTexture
+    this.terrain.createMeshes(createTerrainMaterial())
+    scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
+
+    this.buildPlaceholderMonolith()
     this.applyQuality(settings)
   }
 
@@ -58,11 +78,22 @@ export class World {
     const texel = (2 * this.shadowRadius) / settings.shadowMapSize
     shadow.bias = -0.0004
     shadow.normalBias = texel * 1.2
+
+    this.terrain.setDetail(settings.terrainDetail)
+    if (this.noiseTexture.anisotropy !== settings.anisotropy) {
+      this.noiseTexture.anisotropy = settings.anisotropy
+      this.noiseTexture.needsUpdate = true
+    }
   }
 
-  /** `focus` is what the shadow frustum should centre on (the player, or the camera while spectating). */
-  update(dt: number, time: number, focus: THREE.Vector3) {
+  /**
+   * `focus` is what the shadow frustum centres on (the player, or the camera while spectating);
+   * `viewer` drives terrain LOD.
+   */
+  update(dt: number, time: number, focus: THREE.Vector3, viewer: THREE.Vector3 = focus) {
+    sharedUniforms.uEchoTime.value = time
     for (const animate of this.animators) animate(dt, time)
+    this.terrain.update(viewer)
 
     // Snap the frustum centre to whole shadow texels so shadows don't shimmer while moving.
     const texel = (2 * this.shadowRadius) / this.sun.shadow.mapSize.x
@@ -79,64 +110,44 @@ export class World {
     this.sunTarget.updateMatrixWorld()
   }
 
-  /** Ground height at (x, z). Flat until the terrain lands in M1b. */
-  heightAt(_x: number, _z: number): number {
-    return 0
+  /** Ground height at (x, z) from the baked heightmap (matches the full-detail mesh). */
+  heightAt(x: number, z: number): number {
+    return this.terrain.heightAt(x, z)
   }
 
   dispose() {
     this.sun.dispose()
     this.animators.length = 0
+    this.terrain.dispose()
+    // disposeObject3D doesn't reach textures held only in sharedUniforms.
+    this.noiseTexture.dispose()
+    sharedUniforms.uEchoNoise.value = null
+    sharedUniforms.uTerrainShadow.value = null
+    sharedUniforms.uTerrainSplat.value = null
   }
 
-  /** Temporary M1a scene to verify lighting, shadows and bloom; replaced by terrain + structures in M1b. */
-  private buildTestScene() {
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: '#4a3f3b', roughness: 1 }),
-    )
-    ground.receiveShadow = true
-
-    const stone = new THREE.MeshStandardMaterial({ color: '#6d5f57', roughness: 0.9, metalness: 0.02 })
-    const monolith = new THREE.Mesh(new THREE.BoxGeometry(4, 18, 2.4), stone)
-    monolith.position.set(0, 8.6, -12)
-    monolith.rotation.set(0.08, 0.3, -0.12)
-
-    const pillarGeometry = new THREE.CylinderGeometry(0.7, 0.95, 1, 8)
-    const pillars: THREE.Mesh[] = []
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2
-      const height = 4 + (i % 3) * 1.8
-      const pillar = new THREE.Mesh(pillarGeometry, stone)
-      pillar.scale.y = height
-      pillar.position.set(Math.cos(angle) * 16, height / 2, -12 + Math.sin(angle) * 16)
-      pillars.push(pillar)
-    }
-
-    const energy = new THREE.MeshStandardMaterial({ color: '#0b1a1f', emissive: '#56e6ff', emissiveIntensity: 3 })
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.12, 12, 96), energy)
-    ring.position.set(0, 9, -9.4)
-    const crystalMaterial = new THREE.MeshStandardMaterial({
-      color: '#1d4b5c',
-      emissive: '#3fd0e8',
-      emissiveIntensity: 2,
-      roughness: 0.2,
-      metalness: 0.1,
-    })
-    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(1.4), crystalMaterial)
-    crystal.position.set(9, 2.2, 2)
-    crystal.scale.set(0.7, 1.6, 0.7)
-
-    for (const mesh of [monolith, ...pillars, crystal]) {
+  /** Placeholder Sundered Monolith (two leaning halves + energy ring) until the M3a structures land. */
+  private buildPlaceholderMonolith() {
+    const ground = this.terrain.heightAt(MONOLITH.x, MONOLITH.z)
+    const stone = createStoneMaterial('#8b7d72')
+    const slab = new THREE.BoxGeometry(5, 24, 2.8)
+    const left = new THREE.Mesh(slab, stone)
+    left.position.set(MONOLITH.x - 2.6, ground + 10.5, MONOLITH.z)
+    left.rotation.set(0.05, 0.4, 0.16)
+    const right = new THREE.Mesh(slab, stone)
+    right.scale.set(0.9, 0.7, 0.9)
+    right.position.set(MONOLITH.x + 3.4, ground + 7, MONOLITH.z + 1.5)
+    right.rotation.set(-0.08, 0.25, -0.28)
+    for (const mesh of [left, right]) {
       mesh.castShadow = true
       mesh.receiveShadow = true
     }
-    this.scene.add(ground, monolith, ring, crystal, ...pillars)
-
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 12, 96), createEnergyMaterial('#56e6ff', 4))
+    ring.position.set(MONOLITH.x + 0.4, ground + 14, MONOLITH.z + 0.8)
+    ring.rotation.y = 0.35
+    this.scene.add(left, right, ring)
     this.animators.push((_dt, time) => {
-      ring.rotation.z = time * 0.3
-      crystal.rotation.y = time * 0.6
-      crystalMaterial.emissiveIntensity = 2 + Math.sin(time * 2)
+      ring.rotation.z = time * 0.25
     })
   }
 }
