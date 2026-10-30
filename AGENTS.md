@@ -116,7 +116,7 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 - [x] **M0.1** — Credit budget protocol (§0.1), sub-milestone plan, save-to-`main` rule (§7).
 - **M1 — Engine foundation**
   - [x] **M1a** Bootstrap (three r186). `EchoGame` lazy-imports the engine client-side; `Game.ts` loop + phase machine (`playing`/`paused`, pause on pointer-lock loss); `input.ts` (actions by `KeyboardEvent.code`, pointer lock with automatic drag-to-look fallback for sandboxed iframes, virtual API for touch); `renderer.ts` (ACES, PCF shadows, EffectComposer bloom with MSAA target, GPU name + software-GPU detection → Low); `quality.ts` presets; `settings.ts`/`storage.ts` (localStorage + memory fallback); `ui/store.ts` + `useUI`; HUD (FPS chip, F3 stats), boot overlay, minimal pause menu (quality + render scale). Temporary test scene in `world/world.ts` and free-fly `player/spectator.ts`. Verified in browser: renders, F3, pause, quality switch, settings saved.
-  - [ ] **M1b** World look: `world/layout.ts`, `world/terrain.ts` (analytic height → cached heightmap → chunked LOD meshes + skirts), `world/materials.ts`, `render/shaderChunks.ts` (height fog + shared uniforms), `world/sky.ts` (gradient, ringed planet, sun, stars, clouds), `world/mountains.ts`, bloom (`EffectComposer` + `UnrealBloomPass` + `OutputPass`, off on Low).
+  - [x] **M1b** World look (details: §4 Engine notes). `noise.ts`, `layout.ts`, `terrain.ts` (analytic height → 361² heightmap → LOD chunks + skirts, splat + baked sun-shadow textures), `render/shaderChunks.ts` (height fog, `patchWorldMaterial`), `materials.ts`, `sky.ts` (ringed planet, sun, stars, clouds), `mountains.ts`, placeholder monolith in `world.ts`, bloom on Medium+. Tuned: `PLANET_NOTCH` (low rim + ranges under the planet), ranges rise with distance, softer trail edges. Browser-verified on Low and High.
   - [ ] **M1c** Player: `physics/collision.ts` (heightmap ground, circle/box colliders, spatial hash, camera ray), `player/player.ts` (walk/run/jump, slope limit), `player/avatar.ts` (model + procedural animation), `player/camera.ts` (orbit, collision, cinematic mode), basic HUD.
 - **M2 — Echo pulse**
   - [ ] **M2a** `echo/echoSystem.ts`: 2 pulse slots in shared uniforms, `onBeforeCompile` wavefront + glyph reveal, expanding shell, Q/click input + cooldown, HUD cooldown.
@@ -134,116 +134,44 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 
 ## 4. Next steps (ordered — start at the top)
 
-1. **M1b** (see §3). Replace `World.buildTestScene()` and the flat `World.heightAt()` with real terrain/sky;
-   keep the `World` API (`applyQuality`, `update(dt, time, focus)`, `heightAt`, `dispose`) and the sun/hemi lights.
-   Bloom params can be tuned via `RenderSystem.setBloom()`. Then M1c → M2a → … one sub-milestone at a time.
-2. If you stop mid-step, write here exactly what is unfinished: file, function, what is left.
-   **2026-10-30: three sessions stopped before writing code** (the 3rd spent ~$3.2 of $5 on reading files plus one
-   long planning pass that was never written down). No M1b files exist yet. The design and notes below are final.
-   **Don't re-derive or re-plan; write code in the first step.** Order: `noise.ts` + `layout.ts` → commit/push →
-   `terrain.ts` → `render/shaderChunks.ts` → `materials.ts` → `sky.ts` → `mountains.ts` (commit/push after every
-   1–2 files; unimported files are fine if `tsc` passes) → wire into `world.ts`, `Game.ts` (spawn) and `quality.ts`
-   (viewDistance) → one browser check → tune → save.
+1. **M1c** player (see §3). Plan (decided — implement, then tune):
+   - `physics/collision.ts`: ground = `world.heightAt` + normal by central differences; static colliders (vertical
+     cylinders and yaw-rotated boxes, each with a y range) in a spatial hash; `resolveCharacter()` pushes the player out
+     of colliders (collider tops count as ground); `cameraClearance()` returns how far the camera can go (heightmap march
+     + collider tests).
+   - `player/player.ts`: feet position + velocity; walk 4.5 / run 8 m/s, ground accel 30, air accel 6, jump 6.2 m/s,
+     gravity 20, coyote + jump buffer 0.12 s; slope limit 40° (steeper = slide, no jump, no walking uphill); ground snap
+     for walking down slopes; moves relative to camera yaw and turns to face the movement.
+   - `player/avatar.ts`: procedural explorer (capsules/spheres; suit, glowing visor + backpack core), procedural
+     idle/walk/run/air animation from speed + phase.
+   - `player/camera.ts`: orbit rig (yaw/pitch from look input), shoulder offset, smoothing, pulls in on terrain/collider
+     hits; cinematic override API for M5a.
+   - `Game.ts`: player + camera replace the spectator (F4 = free-fly debug camera); shadow focus = player, LOD viewer =
+     camera. HUD hint shows movement controls.
+2. Then M2a → M2b → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
+   (file, function, what is left).
 
-**M1b design (decided — implement as written, tune visually):**
-- **Sun moves to the west** (side-light at spawn, shadows fall east): `SUN_DIRECTION = normalize(-0.92, 0.30, -0.25)`
-  (~17° up). Planet NNE, low: dir `(0.42, 0.29, -0.86)`, sin(angular radius) 0.165, rings tilted/opened ~0.32.
-  Put both in `layout.ts`. Outer rim is **low (~24 m) toward the sun azimuth, ~72 m elsewhere**, so the rim
-  doesn't shadow the valleys.
-- **layout.ts** (x east, z south, north = −z): spawn (-4, 242) yaw -0.12; Cradle (0,198) r70; Monolith (8,176);
-  ridge polyline `[-370,140]…[-150,98],[-70,94],[10,92],[90,98]…[370,144]` halfWidth 36, height 34;
-  Hall pass corridor at (-70,94) N–S, halfWidth 9, halfLength 42 (only way through the ridge);
-  Vale basin (-150,-32) r100 depth 10; chasm polyline `[28,92],[22,40],[30,-10],[22,-60],[36,-120],[28,-190],[42,-260],[40,-350]`
-  halfWidth 13, floor -52 (tip buried in the ridge, end cut into the rim); bridge on the chasm at (26,-38);
-  Works plateau (150,-150) r48; Undervault (176,-178); Spire hill (200,25) top r12 / foot r62 / h42 with a
-  spiral ramp (225°→495°, radius 51→13) as the only way up; Drowned Bell crater (100,28) r24 depth 6.5;
-  Ghost Garden (-150,205); Sleeping Giant (-222,22); trails linking spawn → Hall → Vale → bridge → Works → ramp.
-- **terrain.ts**: `sampleTerrain(x,z)` = base fbm → basins/plateau/crater/Spire hill+ramp → ridge → Hall corridor
-  carve → rim → chasm carve → trails (also bakes splat: path/vale/works). Heightmap 361² (2 m), triangle
-  interpolation matching the index diagonal for `heightAt`. Chunks 40 cells (80 m, 9×9), LOD steps 1/2/4/8 at
-  ~115/230/400 m × `terrainDetail`, shared index buffers per LOD, skirts sized from edge LOD error.
-  **Baked terrain sun shadow**: per sample, march toward the sun → "shadow height" → R16F texture; every world
-  material does `directLight.color *= smoothstep(sh-1.6, sh+0.6, worldY)` (terrain doesn't cast into the shadow map).
-- **shaderChunks.ts**: global fog chunk override = exponential height fog integrated along the ray
-  (`fogDensity` from FogExp2 ≈ 0.0034, falloff ≈ 0.0115) + sun in-scatter; fog colour is tone-mapped/encoded
-  because three applies fog after tonemapping. `patchWorldMaterial(material, {key, hooks…})` adds shared uniforms,
-  `vWorldPos`/`vWorldNormal`, hooks after color/roughness/normal/emissive, and patches
-  `getDirectionalLightInfo( directionalLight, directLight );` in `lights_fragment_begin` (verified in r186).
-- **sky.ts**: BackSide sphere, `gl_Position = p.xyww`, renderOrder 1000 (drawn after opaques), horizon colour =
-  fog colour + same in-scatter; analytic ringed planet (ray–sphere + ring plane, mutual shadows), stars,
-  streaky drifting clouds, sun disk (HDR, blooms), far range silhouettes painted at the horizon.
-- **mountains.ts**: polar ring mesh r 380→1250 (lower toward the sun), baked per-vertex sun visibility.
-- **materials.ts**: 256² tileable RGBA noise DataTexture (fbm/fbm/worley/ridged); terrain material (slope rock with
-  strata + biplanar, soil, trails, vale tint, ash) with derivative bump; stone + energy materials.
-- Raise `viewDistance` presets to ≥1500 so mountains aren't clipped; spectator spawns at `SPAWN`.
-
-**M1b implementation notes (worked out 2026-10-30 against the three r186 source; use as-is):**
-- New `game/world/noise.ts`: mulberry32; seeded 2D gradient noise `noise(x, y, period = 256)` (lattice masked with
-  `period−1`, so power-of-two periods tile); `fbm`/`ridged` (rotate ~37° and ×2 per octave); `fbmTile`/`ridgedTile`/
-  `worleyTile` for the 256² noise texture; `clamp01`/`smoothstep`/`lerp`. A `Polyline` class (segment cache,
-  `distance(x, z)` that also stores `along`, bbox `outside()` early reject) lives in `layout.ts`.
-- Concrete layout: ridge `[-370,140],[-300,124],[-230,108],[-150,98],[-70,94],[10,92],[90,98],[170,110],[250,124],
-  [310,134],[370,144]`. Trails `[-4,242],[0,222],[12,198],[20,180],[6,160],[-30,148],[-62,140],[-70,128],[-70,94],
-  [-70,58],[-74,44],[-96,22],[-124,-4],[-140,-24]` → `[-140,-24],[-100,-40],[-56,-46],[-18,-42],[6,-38]` → (bridge)
-  `[44,-38],[66,-58],[96,-92],[124,-124],[150,-150]` → `[162,-110],[168,-60],[164,-14]` (ramp start), plus
-  `[150,-150],[176,-178]`. No trails to the 3 secrets. Hall floor 2 m, Works plateau 9 m, bridge pads 4 m at x ± 18.
-- Feature formulas (`ss` = smoothstep, `d` = distance): ridge `34·(0.82+0.3·n(along))·ss(1,0.42,d/36)·(0.82+0.36·crag)`
-  × `(1−corridor)`, corridor `(1−ss(9,13,|x+70|))·(1−ss(42,48,|z−94|))`. Spire hill `42·ss(0.08,0.92,(62−r)/50)`
-  (max slope ~56°); ramp shelf halfWidth 3.2 (+1.4 blend), height `lerp(hill(51) ≈ 3.1, 42, s)`. Rim radius
-  `300+16·n(2.3cosθ, 2.3sinθ)`, cliff `ss(0.12,0.88,(r−rimR)/30)`, top `rimHeight(θ)+14·ridged`,
-  `rimHeight = 24+48·ss(0.04,0.42, 0.5−0.5cos(θ−θsun))`. Chasm `ends = ss(0,30,along)·(1−ss(L−45,L−5,along))`,
-  halfWidth `13·(0.35+0.65·ends)`, walls `1−ss(hw−3,hw+1,d+2.4·n)`, floor `lerp(h−6, −52+4·fbm, ends)`. Trail mask
-  `1−ss(1.2,3.4,d)` (sink 0.12 m). Splat RGBA8 = path, vale, works-ash, sediment (crater + chasm floor).
-- Terrain sun shadow = O(N) sweep, no ray marching. Walk columns west→east; the point one column toward the sun is at
-  row `j+dj`, with `s = CELL/−sun.x`, `dj = sun.z·s/CELL ≈ −0.272`, `drop = sun.y·s ≈ 0.652 m`;
-  `O(i,j) = max(H(prev), O(prev)) − drop` (lerp in j; column 0 = −500). O excludes the point itself, so lit ground has
-  O < h and stays fully lit. R16F via `DataUtils.toHalfFloat`, linear filter. Terrain-texture UV = `xz/722 + 0.5`.
-- Mesh: cell tris `(v00,v01,v10),(v10,v01,v11)` (CCW seen from +y, diagonal v10–v01); `heightAt` uses the same split
-  (`fx+fz < 1` → triangle v00,v10,v01). One vertex buffer per chunk (41² + 160 skirt verts), 4 shared Uint16 index
-  buffers; switch LOD with `geometry.setIndex()` (three rebinds the VAO), ±10 m hysteresis. Perimeter order: north edge
-  going east, east going south, south going west, west going north; skirt tris `(t1,t2,s1),(t2,s2,s1)` face outward;
-  skirt depth = max edge error of the step-8 LOD + 1 m. Terrain `castShadow` false, `receiveShadow` true.
-- Fog chunk: three uploads `fogColor` **sRGB-encoded when drawing straight to the canvas** (Low, no composer) and
-  linear into the composer target. In `fog_fragment`, detect with `linearToOutputTexel(vec4(0.5)).r > 0.6`, decode
-  sRGB→linear (`sRGBTransferEOTF` if r186's `colorspace_pars_fragment` has it, else inline the formula), add in-scatter,
-  `toneMapping()` under `#ifdef TONE_MAPPING`, then `linearToOutputTexel`. `fog_vertex`:
-  `vEchoFogRay = (vec4(mvPosition.xyz, 0.0) * viewMatrix).xyz` (world-space camera→vertex). Factor
-  `1−exp(−ρ·L·e^(−b·camY)·(1−e^(−k))/k)` with `k = b·dir.y·L` (use `1−k/2` when |k| is tiny). Built-in materials can't
-  take custom uniforms (ShaderLib uniforms get cloned), so sun dir, in-scatter colour and falloff are **constants baked
-  into the chunk string**; only `fogColor`/`fogDensity` come from `FogExp2`. Shared GLSL `echoAtmosphere(base, dir)`
-  lives in `shaderChunks.ts`; the sky uses it for its horizon so fogged terrain meets the sky without a seam.
-- `patchWorldMaterial`: **must set `material.customProgramCacheKey = () => 'echo:' + key`**. The default key is
-  `onBeforeCompile.toString()`, which is identical for every patched material, so wrong programs get reused. After
-  `#include <project_vertex>`: world pos = `modelMatrix` × batching/instance × `transformed`; world normal =
-  `normalize((vec4(transformedNormal, 0.0) * viewMatrix).xyz)` (skip for MeshBasic). Hook `sunVisibility` is a GLSL
-  expression (default `echoTerrainSunVisibility(vWorldPos)`; mountains use a vertex attribute). Inline a patched copy of
-  `ShaderChunk.lights_fragment_begin` with `directLight.color *= echoSunVisibility;` after the `getDirectionalLightInfo`
-  line (warn if the replace misses). Bump: `echoPerturbNormal(-vViewPosition, normal, h)` via dFdx/dFdy of a height.
-  `disposeObject3D` doesn't reach textures held in `sharedUniforms`, so dispose them in `World.dispose()`.
-- Sky: `SphereGeometry(1, 48, 24)`, BackSide, `depthWrite: false`, `fog: false`, `frustumCulled = false`,
-  renderOrder 1000; vertex `gl_Position = (projectionMatrix * vec4(mat3(viewMatrix) * position, 1.0)).xyww` (no need to
-  follow the camera). Sun disk radius 0.021 rad, HDR 9–18 (blooms). Planet at unit distance with r = 0.165; ring normal
-  `−0.32·P + 0.947·(cos0.34·up⊥ + sin0.34·right)`; ring ρ 1.32–2.4 planet radii with a gap at 1.86; planet↔ring
-  shadows; haze toward the sky colour (stronger near the horizon). Stars: cells of `d·260`, ~0.5 % filled. Clouds:
-  plane projection `d.xz/(d.y+0.14)`, stretched along the wind. Use `textureLod(…, 0.0)` for 1D lookups (the atan
-  seam would cause mip spikes). End with `tonemapping_fragment` + `colorspace_fragment`; add a multiplicative ±1 % dither
-  against banding.
-- Mountains: ring r 340→1250 (inner edge buried under the rim plateau, so there's no gap at the square heightmap
-  edge or corners), 288 segments × 30 rings spaced `(k/30)^1.5`, height
-  `rimHeight(θ) − 6 + ss(0,0.12,t)·(60+220·ridged)·(0.35…1, lower toward the sun)`. Per-vertex sun visibility from
-  marching the analytic height (18 m × 40 steps) → attribute `echoSunVis`.
-- Colours are linear albedos (soil 0.085→0.19, rock 0.06→0.22, trail 0.28/0.21/0.15, vale 0.07/0.10/0.13, ash 0.035).
-  three ≥ r155 has no implicit π in light units, so expect sun ≈ 4–6 and hemi ≈ 1 after tuning.
-- Until M3a, a placeholder Sundered Monolith at `MONOLITH` (two leaning stone slabs + emissive ring) checks shadows and
-  bloom. viewDistance presets: 1600 / 1800 / 2000 / 2400.
-- Gotchas found 2026-10-30 (3rd session): `DataTexture` defaults to `NearestFilter`, so set Linear explicitly; the
-  361-wide R16F shadow texture needs `unpackAlignment = 2` (722-byte rows aren't 4-byte aligned). GLSL `smoothstep`
-  with reversed edges is undefined (fine in JS). Spire: `h = lerp(h, 3, 1−ss(40,80,r)) + hill(r)` so the ramp heights
-  (3 + 3.1 → 45 m) match the surface; fade the ramp in with `ss(0, 0.03, s)` (avoids a wall at its start). Hall:
-  `h = lerp(h, 2, corridor·core)`, where core is the ridge falloff, so the floor doesn't step at the corridor ends.
-  Mountains: march a bilinear lookup of the precomputed polar height grid (fast). Quads `(a,b,c),(b,d,c)` with
-  a=(s,k), b=(s+1,k), c=(s,k+1) face up. A ±1 % multiplicative dither is too weak in sRGB output: add ±0.5/255
-  interleaved-gradient noise when the output is sRGB. `World.update(dt, time, focus, viewer = focus)` (viewer → LOD).
+**Engine notes (as built in M1b — read before touching rendering/world code):**
+- `layout.ts` holds every coordinate. `terrain.ts` `sampleTerrain()` is the single analytic height definition; mesh,
+  physics (`Terrain.heightAt`, same triangle split as the mesh), splat and sun-shadow textures are all baked from it.
+- Terrain: 361² heightmap (2 m cells), 9×9 chunks × 4 LODs (shared index buffers, switched with `setIndex`), skirts.
+  Splat RGBA8 = path, vale, works-ash, sediment. Terrain-texture UV = `xz / 722 + 0.5`.
+- Baked terrain sun shadow (R16F "shadow height", O(N) sweep toward the sun): every patched material multiplies
+  `directLight.color` by `echoSunVisibility`. The terrain doesn't cast into the shadow map; the shadow frustum follows
+  `World.update(…, focus)` (texel-snapped), so objects only cast shadows near the focus.
+- `render/shaderChunks.ts`: global height-fog chunk override (sun direction and in-scatter baked in as constants; handles
+  the sRGB-encoded fog colour on Low). `patchWorldMaterial(material, { key, color, roughness, normal, emissive, vertex…,
+  sunVisibility })` — **every distinct shader needs a unique `key`** (it becomes `customProgramCacheKey`). Shared
+  uniforms: `uEchoTime`, `uEchoNoise`, `uTerrainShadow`, `uTerrainSplat` (their textures are disposed in `World.dispose`).
+- `materials.ts`: 256² tileable noise (R fbm 8 cells, G fbm 32, B Worley 16, A ridged 8); terrain / stone / energy
+  materials. Bump via `echoPerturbNormal(-vViewPosition, normal, height)`.
+- `sky.ts`: analytic ringed planet + HDR sun disk (blooms) + stars + clouds; its horizon uses the shared
+  `echoAtmosphere()` so fogged terrain meets the sky without a seam.
+- `mountains.ts`: polar ring r 340→1250 that rises with distance, lower toward the sun and inside `PLANET_NOTCH`
+  (which also lowers the rim through `rimHeight()`), so the planet's lower limb stays visible from the main areas.
+- Gotchas: `DataTexture` defaults to `NearestFilter`; the 361-wide R16F texture needs `unpackAlignment = 2`; GLSL
+  `smoothstep` with reversed edges is undefined; three r186 light units have no π (sun 5, hemi 1.2); `PCFSoftShadowMap`
+  was removed (use `PCFShadowMap`).
 
 ## 5. Architecture / file map
 
@@ -336,3 +264,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1b-plan | 2026-10-30 | Owner stopped the session early: no code written. Full M1b design saved in §4 (layout coordinates, terrain/fog/sky/shadow approach). |
 | M1b-notes | 2026-10-30 | 2nd session also ended before any code (owner: "save all"). Saved M1b implementation notes in §4: fog colour-space handling, O(N) terrain shadow sweep, chunk/skirt/LOD layout, program cache key, sky/mountain details, concrete ridge/trail coordinates. Lesson: design is done, so the next session should go straight to code. |
 | M1b-notes3 | 2026-10-30 | 3rd session, still no code: ~$3.2 spent on reading files + an unsaved planning pass, then the owner said "save". Added gotchas (DataTexture filters, R16F `unpackAlignment`, Spire/Hall formulas, faster mountain shadows, dither) and fixed the credit-check query. Lesson: write files in the first step and push every 1–2 files. |
+| M1b | 2026-10-30 | 4th session: M1b code was already on `main` (M1b-1, M1b-3) but the docs weren't updated. Browser-verified; tuned the planet notch, layered ranges and trail edges; condensed the M1b design/notes into §4 "Engine notes". |

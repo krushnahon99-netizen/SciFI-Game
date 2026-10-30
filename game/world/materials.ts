@@ -56,7 +56,8 @@ const TERRAIN_COLOR = /* glsl */ `
   tAlbedo = mix(tAlbedo, vec3(0.07, 0.1, 0.13) * (0.8 + 0.4 * tB.r), tSplat.g * (1.0 - 0.6 * tRockMask));
   tAlbedo = mix(tAlbedo, vec3(0.035, 0.033, 0.032) * (0.8 + 0.4 * tC.g), tSplat.b * tFlat);
   tAlbedo = mix(tAlbedo, vec3(0.12, 0.095, 0.082) * (0.9 + 0.2 * tB.a), tSplat.a * tFlat);
-  float tTrail = smoothstep(0.25, 0.65, tSplat.r + (tC.b - 0.45) * 0.5) * tFlat;
+  // Low-frequency edge breakup: the 14 cm Worley term aliased into blocky pebbles along trail edges.
+  float tTrail = smoothstep(0.25, 0.65, tSplat.r + (tB.b - 0.45) * 0.35 + (tC.r - 0.5) * 0.12) * tFlat;
   tAlbedo = mix(tAlbedo, vec3(0.28, 0.21, 0.15) * (0.82 + 0.3 * tC.r), tTrail);
   diffuseColor.rgb = tAlbedo;
   float echoBump = (tC.r * 0.05 + tB.b * 0.16) * (1.0 - 0.75 * tTrail) + tRockMask * (tS.a * 0.45 + tStrata * 0.12);

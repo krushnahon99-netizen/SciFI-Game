@@ -6,6 +6,7 @@ import {
   CRADLE,
   DROWNED_BELL,
   HALL,
+  PLANET_NOTCH,
   RIDGE,
   RIM,
   SPIRE,
@@ -29,9 +30,18 @@ export interface TerrainSample {
   sediment: number
 }
 
-/** Rim cliff-top height by azimuth: low toward the sun so the rim doesn't shadow the valleys. */
+/** 0 inside the low notch under the planet, 1 outside it. */
+export function planetNotch(theta: number): number {
+  let d = (theta - PLANET_NOTCH.azimuth) % (Math.PI * 2)
+  if (d > Math.PI) d -= Math.PI * 2
+  else if (d < -Math.PI) d += Math.PI * 2
+  return ss(PLANET_NOTCH.inner, PLANET_NOTCH.outer, Math.abs(d))
+}
+
+/** Rim cliff-top height by azimuth: low toward the sun (so it doesn't shadow the valleys) and under the planet. */
 export function rimHeight(theta: number): number {
-  return RIM.low + (RIM.high - RIM.low) * ss(0.04, 0.42, 0.5 - 0.5 * Math.cos(theta - SUN_AZIMUTH))
+  const h = RIM.low + (RIM.high - RIM.low) * ss(0.04, 0.42, 0.5 - 0.5 * Math.cos(theta - SUN_AZIMUTH))
+  return lerp(Math.min(h, PLANET_NOTCH.rim), h, planetNotch(theta))
 }
 
 function rimRadius(theta: number): number {

@@ -122,10 +122,15 @@ export const TERRAIN_UV_SCALE = 722
 /** Low amber sun in the west (~17° up): side-light at spawn, shadows fall east. */
 export const SUN_DIRECTION = new Vector3(-0.92, 0.3, -0.25).normalize()
 export const SUN_AZIMUTH = Math.atan2(SUN_DIRECTION.z, SUN_DIRECTION.x)
-/** Giant ringed planet, low in the NNE. */
+/** Giant ringed planet, low in the NNE (~17° up). */
 export const PLANET_DIRECTION = new Vector3(0.42, 0.29, -0.86).normalize()
 /** sin(angular radius) of the planet disk. */
 export const PLANET_RADIUS = 0.165
+/**
+ * Low gap in the rim and distant ranges under the planet (azimuth = atan2(z, x) from the origin, radians),
+ * so the planet's lower limb stays visible from the Cradle, the Vale and the Works.
+ */
+export const PLANET_NOTCH = { azimuth: -1.25, inner: 0.25, outer: 0.7, rim: 38, mountainScale: 0.15 }
 
 // ---------------------------------------------------------------- regions
 

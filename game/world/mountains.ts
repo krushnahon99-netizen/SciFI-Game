@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import { patchWorldMaterial } from '../render/shaderChunks'
-import { SUN_AZIMUTH, SUN_DIRECTION } from './layout'
+import { PLANET_NOTCH, SUN_AZIMUTH, SUN_DIRECTION } from './layout'
 import { lerp, ridged, smoothstep as ss } from './noise'
-import { rimHeight, type Terrain } from './terrain'
+import { planetNotch, rimHeight, type Terrain } from './terrain'
 
 // Inner edge is buried under the rim plateau, so there's no gap at the square heightmap's edge or corners.
 const INNER = 340
@@ -31,15 +31,19 @@ export function createMountains(terrain: Terrain): THREE.Mesh {
     const theta = (s / SEGMENTS) * Math.PI * 2
     const c = Math.cos(theta)
     const sn = Math.sin(theta)
-    const scale = lerp(0.35, 1, ss(0.04, 0.42, 0.5 - 0.5 * Math.cos(theta - SUN_AZIMUTH)))
+    const scale =
+      lerp(0.35, 1, ss(0.04, 0.42, 0.5 - 0.5 * Math.cos(theta - SUN_AZIMUTH))) *
+      lerp(PLANET_NOTCH.mountainScale, 1, planetNotch(theta))
     const base = rimHeight(theta) - 6
     for (let k = 0; k <= RINGS; k++) {
       const r = radii[k]
       const t = (r - INNER) / (OUTER - INNER)
       const x = c * r
       const z = sn * r
-      const peaks = (60 + 220 * ridged(x / 210 + 1.7, z / 210 - 3.2, 5)) * scale
-      const h = base + ss(0, 0.12, t) * peaks
+      // Ranges rise with distance, so they read as layered silhouettes instead of a wall behind the rim.
+      const peaks = (30 + 160 * ridged(x / 210 + 1.7, z / 210 - 3.2, 5)) * scale
+      const rise = ss(0, 0.07, t) * (0.35 + 0.65 * ss(0.06, 0.5, t))
+      const h = base + rise * peaks
       const i = s * STRIDE + k
       heights[i] = h
       positions[i * 3] = x
