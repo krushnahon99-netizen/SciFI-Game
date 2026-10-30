@@ -3,6 +3,7 @@
 import type { GamePhase } from '../core/events'
 import type { LookMode } from '../core/input'
 import type { RegionId } from '../gameplay/ids'
+import type { Notice, ProgressSnapshot } from '../gameplay/progression'
 import type { QualityLevel } from '../render/quality'
 
 export interface PerfSnapshot {
@@ -37,6 +38,10 @@ export interface UIState {
   interactPrompt: string | null
 
   // --- Lane B fields ---
+  /** Saved progress for the objective, journal and end screen (gameplay/progression.ts); null before boot. */
+  progress: ProgressSnapshot | null
+  /** Discovery notices, oldest first; the HUD removes each one after showing it. */
+  notices: readonly Notice[]
 }
 
 type Listener = () => void
@@ -93,4 +98,6 @@ export const uiStore = createStore<UIState>({
   interactPrompt: null,
 
   // --- Lane B ---
+  progress: null,
+  notices: [],
 })

@@ -103,6 +103,30 @@ If everything is fine: reply `AGREED`, save per §5, and start Lane B step 1 in 
 
 Open points from A: none.
 
+### B → A (2026-10-30)
+
+Hi A, B here. I reviewed §2–§5 against the code (`ids.ts`, `events.ts`, `store.ts`, `Game.ts`). The lane split and
+order, the IDs and events, the fragment split and the one-way progress flow all work for me. Four points; none of them
+blocks either lane, so I started Lane B right away:
+
+1. **`ProgressView` couldn't tell you the checkpoint.** §4 has you respawn the player at the last region on load, but
+   the view had no accessor for it. I added two read-only members in `ids.ts` (additive; `EMPTY_PROGRESS` got
+   defaults): `checkpoint: RegionId` (last `regionEnter`, default `cradle`) and `completed: boolean` (ending reached;
+   use it if you want the world to stay "remembered" in free roam). Say so if you'd rather shape it differently.
+2. **No runtime reset needed.** The World is built once from the saved progress (the title screen will show the live
+   world behind it). "New journey" over an existing save = `progression.discard()` + remount `<EchoGame>`, which
+   builds a fresh Game and World. So your builders only read the `ProgressView` at construction time.
+   `Game.progression` (a `ProgressView`) exists now and is created before `World`; pass it in when you need it.
+3. **Player-facing text lives in `gameplay/content.ts`.** Use `REGIONS[id].name` / `.subtitle` for your region title,
+   `PROMPTS.*` for `interactPrompt`, and `FRAGMENTS[id].region` / `.pulseOnly` when placing fragments (pulse-only:
+   f02, f04, f06, f07, f09). Need a string that isn't there? Hard-code a placeholder and add a Request; I'll move it.
+4. **Audio hooks** (optional, details in §7 To A). Audio uses generic cues until they exist.
+
+Testing aid: `__echo.events.emit('fragmentFound', { id: 'f01' })` shows the HUD notice and saves; `__echo.progression`
+is the live state; `localStorage.removeItem('echo.save.v1')` wipes the save.
+
+Open points: 1–4 (non-blocking).
+
 ## 7. Requests
 
 Add at the end of the right list: `- [ ] (from B, date) what you need — why`. The receiver ticks `[x]` and adds a
@@ -110,7 +134,12 @@ short answer. Check this section after every pull.
 
 ### To A
 
-(none)
+- [ ] (from B, 2026-10-30) Optional audio hooks; add them in your events block when you build those systems:
+  (a) `index?: number` on `puzzleStep` (pillar 0–3, node 0–2) so each pillar/node gets its own tone;
+  (b) `choirNote: { index: number; position: {x,y,z} }` each time a ghost singer sings pillar `index` during the replay
+  (the tone is the player's memory aid); (c) `finaleStart: { position: {x,y,z} }` when the Listening Stone is
+  activated (music swell; `endingStart` stays at the end); (d) `phaseWarn: { position: {x,y,z} }` when a phase object
+  starts its expiry flicker (warning tone on the Glass Bridge).
 
 ### To B
 

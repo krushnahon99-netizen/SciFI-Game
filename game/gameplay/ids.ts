@@ -15,6 +15,10 @@ export interface ProgressView {
   isSolved(id: PuzzleId): boolean
   has(id: FragmentId | SecretId | ItemId): boolean
   visited(id: RegionId): boolean
+  /** Region of the last `regionEnter`: where a loaded game (and a respawn) puts the player. */
+  readonly checkpoint: RegionId
+  /** The ending was reached at least once; the world may stay "remembered" during free roam. */
+  readonly completed: boolean
 }
 
 /** Stand-in until progression.ts exists: nothing solved, nothing found. */
@@ -22,4 +26,6 @@ export const EMPTY_PROGRESS: ProgressView = {
   isSolved: () => false,
   has: () => false,
   visited: () => false,
+  checkpoint: 'cradle',
+  completed: false,
 }

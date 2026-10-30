@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { Progression } from '../gameplay/progression'
 import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
 import { Player } from '../player/player'
@@ -31,6 +32,8 @@ export class Game {
   readonly world: World
   readonly echo: EchoSystem
   readonly reactives: ReactiveRegistry
+  /** Saved progress (lane B); built before the World so builders can read it as a ProgressView. */
+  readonly progression: Progression
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -67,6 +70,7 @@ export class Game {
     this.renderSystem.resize()
 
     this.input = new Input(this.renderSystem.canvas, this.events)
+    this.progression = new Progression(this.events)
     this.reactives = new ReactiveRegistry(this.events)
     this.world = new World(this.scene, quality, this.reactives)
     this.player = new Player(this.world.collision, SPAWN)
@@ -140,6 +144,7 @@ export class Game {
     this.disposed = true
     this.renderSystem.renderer.setAnimationLoop(null)
     this.input.dispose()
+    this.progression.dispose()
     this.avatar.dispose()
     this.echo.dispose()
     this.reactives.dispose()
@@ -197,6 +202,7 @@ export class Game {
     this.time += dt
     this.handleSystemActions()
     const playing = this.phase === 'playing'
+    if (playing) this.progression.update(dt)
     if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
     this.echo.update(playing ? dt : 0)
     this.reactives.update(this.echo.clock, playing ? dt : 0)

@@ -60,6 +60,17 @@
   --radius: 0.625rem;
 }
 
+@keyframes echo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
