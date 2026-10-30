@@ -154,6 +154,36 @@ export const HALL = { x: -70, z: 94, halfWidth: 9, halfLength: 42, floor: 2 }
 /** Singing Vale: crystal basin. */
 export const VALE = { x: -150, z: -32, radius: 100, depth: 10 }
 
+/** The Choir: broken crystal pipes on a two-tier dais in the Vale floor, west of the trail junction. */
+export const CHOIR = { x: -160, z: -44 }
+
+export interface CrystalFormation {
+  x: number
+  z: number
+  size: number
+  count: number
+  spread: number
+}
+
+/** Great crystal formations on the Vale slopes (all clear of the trails). */
+export const VALE_FORMATIONS: readonly CrystalFormation[] = [
+  { x: -200, z: -38, size: 4.2, count: 12, spread: 9 },
+  { x: -182, z: -84, size: 3, count: 9, spread: 7 },
+  { x: -140, z: -86, size: 2.6, count: 8, spread: 6 },
+  { x: -112, z: -66, size: 3.2, count: 10, spread: 7 },
+  { x: -150, z: 6, size: 2.4, count: 7, spread: 5.5 },
+  { x: -188, z: 2, size: 2.8, count: 8, spread: 6 },
+  { x: -118, z: -14, size: 1.8, count: 6, spread: 4 },
+  { x: -232, z: -70, size: 5, count: 10, spread: 11 },
+]
+
+/** Crystal ribs arching over the trail where it drops into the Vale: feet, apex height above the higher foot. */
+export const VALE_RIBS: readonly { a: Point2; b: Point2; height: number; radius: number }[] = [
+  { a: [-96, 11.1], b: [-104, 25.5], height: 10, radius: 0.9 },
+  { a: [-103.9, 1.7], b: [-113.1, 19.1], height: 13, radius: 1.1 },
+  { a: [-111.7, -7.6], b: [-122.3, 12.6], height: 16, radius: 1.3 },
+]
+
 /** Chasm: tip buried in the ridge, south end cut into the outer rim. */
 export const CHASM = {
   line: new Polyline([
