@@ -6,10 +6,13 @@ import { installEchoFog, sharedUniforms } from '../render/shaderChunks'
 import { SUN_DIRECTION } from './layout'
 import { createNoiseTexture, createTerrainMaterial } from './materials'
 import { createMountains } from './mountains'
+import { AmbientParticles } from './particles'
+import { Scatter } from './scatter'
 import { createSky } from './sky'
 import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
 import { buildHall, type Hall } from './structures/hall'
+import { buildVale } from './structures/vale'
 import { Terrain } from './terrain'
 
 export { SUN_DIRECTION } from './layout'
@@ -27,6 +30,8 @@ export class World {
   /** Hall of Echoes handles (altar, glyph pillars, gate) for the Choir Sequence. */
   readonly hall: Hall
 
+  private readonly scatter: Scatter
+  private readonly particles: AmbientParticles
   private readonly noiseTexture: THREE.DataTexture
   private readonly sunTarget = new THREE.Object3D()
   private readonly animators: Animator[] = []
@@ -70,6 +75,10 @@ export class World {
     }
     buildCradle(context)
     this.hall = buildHall(context)
+    buildVale(context)
+    this.scatter = new Scatter(this.terrain, this.collision)
+    this.particles = new AmbientParticles()
+    scene.add(this.scatter.root, this.particles.points)
     this.applyQuality(settings)
   }
 
@@ -95,6 +104,8 @@ export class World {
     shadow.normalBias = texel * 1.2
 
     this.terrain.setDetail(settings.terrainDetail)
+    this.scatter.setDensity(settings.scatterDensity)
+    this.particles.setBudget(settings.particleBudget)
     if (this.noiseTexture.anisotropy !== settings.anisotropy) {
       this.noiseTexture.anisotropy = settings.anisotropy
       this.noiseTexture.needsUpdate = true

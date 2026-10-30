@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { Collision } from '../physics/collision'
 import { patchWorldMaterial } from '../render/shaderChunks'
+import { mergeParts } from '../world/geometry'
 import { mulberry32 } from '../world/noise'
 import { PULSE_INACTIVE } from './pulseShader'
 import { arrivalAt, type PulseInfo, type Reactive } from './reactive'
@@ -25,6 +26,15 @@ export interface CrystalClusterSpec {
   seed: number
   size?: number
   color?: THREE.ColorRepresentation
+  /** 'shard' (default): double-pointed spike. 'prism': hexagonal column with a pointed tip. */
+  shape?: 'shard' | 'prism'
+}
+
+/** Hexagonal column (-0.2 … 2.0 like the shard) so the climbing band and colliders fit both shapes. */
+function prismGeometry(): THREE.BufferGeometry {
+  const body = new THREE.CylinderGeometry(0.26, 0.3, 1.5, 6).translate(0, 0.55, 0)
+  const tip = new THREE.ConeGeometry(0.26, 0.7, 6).translate(0, 1.65, 0)
+  return mergeParts([body, tip], 'crystal prism')
 }
 
 /** Resonant crystal shards (one instanced draw) that flare when the wavefront reaches each of them. */
@@ -39,7 +49,10 @@ export class CrystalCluster implements Reactive {
     const random = mulberry32(spec.seed)
     const size = spec.size ?? 1
     const count = spec.count
-    const geometry = new THREE.OctahedronGeometry(1, 0).scale(0.3, 1.1, 0.3).translate(0, 0.9, 0)
+    const geometry =
+      spec.shape === 'prism'
+        ? prismGeometry()
+        : new THREE.OctahedronGeometry(1, 0).scale(0.3, 1.1, 0.3).translate(0, 0.9, 0)
     this.arrive = new THREE.InstancedBufferAttribute(new Float32Array(count * 2).fill(PULSE_INACTIVE), 2)
     this.arrive.setUsage(THREE.DynamicDrawUsage)
     geometry.setAttribute('aArrive', this.arrive)

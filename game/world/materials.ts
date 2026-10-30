@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { patchWorldMaterial } from '../render/shaderChunks'
+import { patchWorldMaterial, type WorldMaterialPatch } from '../render/shaderChunks'
 import { fbmTile, ridgedTile, worleyTile } from './noise'
 
 const NOISE_SIZE = 256
@@ -87,14 +87,52 @@ const STONE_COLOR = /* glsl */ `
   float echoBump = sT.a * 0.06 + sT.b * 0.03;
 `
 
-export function createStoneMaterial(color: THREE.ColorRepresentation = '#8b7d72'): THREE.MeshStandardMaterial {
+/** Extra vertex-stage hooks for a material variant (e.g. instanced scatter); `key` names the variant's shader. */
+export type MaterialVariant = Pick<WorldMaterialPatch, 'uniforms' | 'vertexPars' | 'vertex' | 'fragmentPars'> & {
+  key: string
+}
+
+export function createStoneMaterial(
+  color: THREE.ColorRepresentation = '#8b7d72',
+  variant?: MaterialVariant,
+): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({ color, roughness: 0.88, metalness: 0.02 })
   material.name = 'echo.stone'
   return patchWorldMaterial(material, {
-    key: 'stone',
+    ...variant,
+    key: variant ? `stone-${variant.key}` : 'stone',
     color: STONE_COLOR,
     roughness: 'roughnessFactor = clamp(roughnessFactor * (0.9 + 0.2 * sT.g), 0.0, 1.0);',
     normal: 'normal = echoPerturbNormal(-vViewPosition, normal, echoBump);',
+  })
+}
+
+// Faceted crystal: slow bands of light drifting up through it plus a bright rim at grazing angles.
+const CRYSTAL_GLOW = /* glsl */ `
+  float cBand = 0.5 + 0.5 * sin(vWorldPos.y * 0.7 - uEchoTime * 1.3 + vWorldPos.x * 0.21 + vWorldPos.z * 0.17);
+  float cRim = 1.0 - abs(dot(normalize(cameraPosition - vWorldPos), normalize(vWorldNormal)));
+  totalEmissiveRadiance *= 0.3 + 0.5 * cBand * cBand + 0.9 * cRim * cRim;
+`
+
+/** Non-reactive glowing crystal (Vale pipes, ribs, sprigs). Reactive shards use `CrystalCluster` instead. */
+export function createCrystalMaterial(
+  color: THREE.ColorRepresentation = '#3ee6c8',
+  intensity = 1,
+  variant?: MaterialVariant,
+): THREE.MeshStandardMaterial {
+  const material = new THREE.MeshStandardMaterial({
+    color: '#10222a',
+    emissive: color,
+    emissiveIntensity: intensity,
+    roughness: 0.18,
+    metalness: 0.2,
+    flatShading: true,
+  })
+  material.name = 'echo.crystalGlow'
+  return patchWorldMaterial(material, {
+    ...variant,
+    key: variant ? `crystal-glow-${variant.key}` : 'crystal-glow',
+    emissive: CRYSTAL_GLOW,
   })
 }
 
