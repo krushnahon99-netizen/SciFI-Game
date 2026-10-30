@@ -123,6 +123,11 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
   - [x] **M2b** `echo/reactive.ts` (`ReactiveRegistry`: per-pulse bounding-sphere test → hits queued by arrival time → `hit()`, per-frame `update()` only while active; `RevealTimer`; `arrivalAt()`; emits `reactiveHit`), `hologram.ts` (additive memory material: fresnel, scanlines, sweep build-up, noise dissolve), `glyphs.ts` (`GlyphTrail`, instanced ground glyphs, 2 arrival slots per instance in shader), `crystals.ts` (`CrystalCluster`, instanced, flare + climbing band), `ghosts.ts` (`GhostScene`: robed figures, poses walk/kneel/sing/reach along paths), `pastState.ts` (`PastStateOverlay`), `phase.ts` (`PhaseObject`: collider `enabled` toggled, 7 s hold, flicker warning, `stabilize()`). Content in `world/structures/cradle.ts` (intact-monolith hologram, 3 pilgrim ghosts, hidden glyph path to Ghost Garden, 2 crystal clusters, Ghost Garden phase steps). Dev handle `window.__echo` (teleport: `__echo.player.position.set(x,y,z)`). Browser-verified: all trigger; standing on a solid phase stone works. NOT confirmed: phase stone expiry (player should fall after ~7 s) — SwiftShader ran the game clock ~4× slower than real time.
 - **M3 — World, puzzles, progression**
   - [ ] **M3a** Structures: Cradle + Sundered Monolith, Hall of Echoes, Singing Vale (`world/structures/*.ts`), scatter, particles, `gameplay/regions.ts`.
+    - [x] **M3a-1** `world/structures/context.ts` (`StructureContext { scene, collision, reactives, animate }`, `Animator`);
+      `cradle.ts` `buildCradle()` = `buildSunderedMonolith()` (two-tier octagonal dais, `fracturedHalf()` split slab with
+      `runeInlay()`, broken ring turning in the gap, climbable fallen top, half-sunk capstone, dark ring arc, merged rubble,
+      9 standing stones on a 19 m ring; colliders for all) + `buildCradleEchoes()`. Placeholder removed from `world.ts`;
+      `PastStateOverlay` intensity 1.1 → 0.8. tsc clean; not browser-checked yet.
   - [ ] **M3b** Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates.
   - [ ] **M3c** Puzzles: Choir Sequence, Glass Bridge, Dormant Grid (`gameplay/puzzles.ts`, `interactables.ts`).
   - [ ] **M3d** Progression: `content.ts` (all text), memory fragments, 3 secrets, objectives, journal data, save/load (`progression.ts`), respawn, ending.
@@ -135,11 +140,11 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 ## 4. Next steps (ordered — start at the top)
 
 1. Quick checks first (cheap): phase stone expiry at the Ghost Garden (teleport onto the first stone right after a pulse,
-   read `__echo.player.position.y` once `echo.clock` > pulse + 8); optionally lower `PastStateOverlay` intensity (1.1 → ~0.8,
-   side faces clip to white on Low). Note: the HUD FPS is computed from capped dt, so it overstates FPS on SwiftShader.
-   Still untested from M1c: slope limit at the ridge, monolith collider push, camera pull-in.
-2. **M3a** (see §3): move the placeholder monolith from `world.ts` into `world/structures/cradle.ts` and build the rest.
-2. Then M2b → M3a → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
+   read `__echo.player.position.y` once `echo.clock` > pulse + 8). Note: the HUD FPS is computed from capped dt, so it
+   overstates FPS on SwiftShader. Still untested from M1c: slope limit at the ridge, monolith collider push, camera pull-in.
+2. **M3a** (see §3): M3a-1 (monolith) is done; next the Hall of Echoes (`world/structures/hall.ts`), then the Singing
+   Vale (`vale.ts`), scatter, particles, `gameplay/regions.ts`.
+3. Then M3b → M3c → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
    (file, function, what is left).
 
 **Engine notes (as built in M1b — read before touching rendering/world code):**
@@ -266,3 +271,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M2a-wip | 2026-10-30 | Same session, credits ran out mid-check. M2a written: `game/echo/pulseShader.ts` (constants + world-material GLSL: wavefront band, Truchet glyph reveal), `game/echo/echoSystem.ts` (2 slots, play clock `uEchoClock`, 2.5 s cooldown, additive shell meshes, `pulse` event), avatar core flare + release pose, HUD charge ring (`components/echo/pulse-indicator.tsx`). tsc clean; NOT visually verified. **Next session: open the game, press Q, check wavefront/glyphs/shell/ring, tune, then tick M2a in §3 and move §4 to M2b.** |
 | M2a | 2026-10-30 | 6th session: browser-verified the pulse. Shell was a view-filling veil from inside (angle-independent wall term) → now fresnel-rim only with near-camera fade; glyphs got their own saturated tint and a sparser mask; front ×1.6. Jump verified. |
 | M2b | 2026-10-30 | 6th session: reactive registry + 5 reactive types + Cradle echo content (see §3). tsc clean, browser-verified except phase expiry. Saved at $0.27 left. |
+| M3a-1 | 2026-10-30 | 7th session (chat h1YhUrArccr) built the Sundered Monolith (see §3) but ran out of credits right after pushing `v0/echo-m3a`, so it never reached `main` and these docs weren't updated. 8th session: tsc clean, fast-forwarded `main`, updated docs. |
