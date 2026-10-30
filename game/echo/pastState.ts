@@ -15,7 +15,7 @@ export class PastStateOverlay implements Reactive {
   readonly kind = 'pastState' as const
   readonly center = new THREE.Vector3()
   readonly radius: number
-  private readonly material = createHologramMaterial('#9fe2ff', 1.1)
+  private readonly material = createHologramMaterial('#9fe2ff', 0.8)
   private readonly timer = new RevealTimer(HOLD, 0.15, FADE_OUT)
   private readonly baseY: number
   private readonly topY: number

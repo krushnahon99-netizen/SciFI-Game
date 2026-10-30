@@ -3,11 +3,12 @@ import type { ReactiveRegistry } from '../echo/reactive'
 import { Collision } from '../physics/collision'
 import type { QualitySettings } from '../render/quality'
 import { installEchoFog, sharedUniforms } from '../render/shaderChunks'
-import { MONOLITH, SUN_DIRECTION } from './layout'
-import { createEnergyMaterial, createNoiseTexture, createStoneMaterial, createTerrainMaterial } from './materials'
+import { SUN_DIRECTION } from './layout'
+import { createNoiseTexture, createTerrainMaterial } from './materials'
 import { createMountains } from './mountains'
 import { createSky } from './sky'
-import { buildCradleEchoes } from './structures/cradle'
+import type { Animator } from './structures/context'
+import { buildCradle } from './structures/cradle'
 import { Terrain } from './terrain'
 
 export { SUN_DIRECTION } from './layout'
@@ -15,8 +16,6 @@ export { SUN_DIRECTION } from './layout'
 const SUN_DISTANCE = 300
 const FOG_COLOR = '#5b4b66'
 const FOG_DENSITY = 0.0034
-
-type Animator = (dt: number, time: number) => void
 
 /** Assembles the environment and owns global lighting (sun + sky fill) and the player-following shadow frustum. */
 export class World {
@@ -60,8 +59,7 @@ export class World {
     this.collision = new Collision((x, z) => this.terrain.heightAt(x, z))
     scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
 
-    this.buildPlaceholderMonolith()
-    buildCradleEchoes({ scene, collision: this.collision, reactives })
+    buildCradle({ scene, collision: this.collision, reactives, animate: (animator) => this.animators.push(animator) })
     this.applyQuality(settings)
   }
 
@@ -131,32 +129,5 @@ export class World {
     sharedUniforms.uEchoNoise.value = null
     sharedUniforms.uTerrainShadow.value = null
     sharedUniforms.uTerrainSplat.value = null
-  }
-
-  /** Placeholder Sundered Monolith (two leaning halves + energy ring) until the M3a structures land. */
-  private buildPlaceholderMonolith() {
-    const ground = this.terrain.heightAt(MONOLITH.x, MONOLITH.z)
-    const stone = createStoneMaterial('#8b7d72')
-    const slab = new THREE.BoxGeometry(5, 24, 2.8)
-    const left = new THREE.Mesh(slab, stone)
-    left.position.set(MONOLITH.x - 2.6, ground + 10.5, MONOLITH.z)
-    left.rotation.set(0.05, 0.4, 0.16)
-    const right = new THREE.Mesh(slab, stone)
-    right.scale.set(0.9, 0.7, 0.9)
-    right.position.set(MONOLITH.x + 3.4, ground + 7, MONOLITH.z + 1.5)
-    right.rotation.set(-0.08, 0.25, -0.28)
-    for (const mesh of [left, right]) {
-      mesh.castShadow = true
-      mesh.receiveShadow = true
-    }
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.6, 0.14, 12, 96), createEnergyMaterial('#56e6ff', 4))
-    ring.position.set(MONOLITH.x + 0.4, ground + 14, MONOLITH.z + 0.8)
-    ring.rotation.y = 0.35
-    this.scene.add(left, right, ring)
-    this.collision.addBox(left.position.x, left.position.z, 2.6, 1.5, left.rotation.y, ground - 2, ground + 21)
-    this.collision.addBox(right.position.x, right.position.z, 2.4, 1.35, right.rotation.y, ground - 2, ground + 15)
-    this.animators.push((_dt, time) => {
-      ring.rotation.z = time * 0.25
-    })
   }
 }
