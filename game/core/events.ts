@@ -1,4 +1,5 @@
 import type { ReactiveKind } from '../echo/reactive'
+import type { FragmentId, ItemId, PuzzleId, RegionId, SecretId, Surface } from '../gameplay/ids'
 import type { QualityLevel } from '../render/quality'
 import type { LookMode } from './input'
 
@@ -14,6 +15,23 @@ export interface GameEvents {
   pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number }
   /** The wavefront reached a reactive object (echo/reactive.ts); `time` is the arrival on the play clock. */
   reactiveHit: { kind: ReactiveKind; position: { x: number; y: number; z: number }; time: number }
+
+  // --- Lane A (world & gameplay) emits these; see docs/coordination.md §4 ---
+  regionEnter: { id: RegionId }
+  footstep: { surface: Surface; run: boolean }
+  /** Touchdown after a fall; `impact` is the downward speed in m/s. */
+  land: { impact: number }
+  /** One puzzle input (pillar activated, node charged…); `ok: false` = wrong step, puzzle reset. */
+  puzzleStep: { id: PuzzleId; ok: boolean }
+  puzzleSolved: { id: PuzzleId }
+  fragmentFound: { id: FragmentId }
+  secretFound: { id: SecretId }
+  itemFound: { id: ItemId }
+  respawn: { region: RegionId }
+  /** The finale pulse has finished; Game.ts switches to the 'ending' phase. */
+  endingStart: Record<string, never>
+
+  // --- Lane B (systems & UI) adds its events below ---
 }
 
 type Handler<T> = (payload: T) => void

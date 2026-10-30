@@ -2,6 +2,7 @@
 // The engine writes on events or throttled timers, never per frame; React reads via useSyncExternalStore.
 import type { GamePhase } from '../core/events'
 import type { LookMode } from '../core/input'
+import type { RegionId } from '../gameplay/ids'
 import type { QualityLevel } from '../render/quality'
 
 export interface PerfSnapshot {
@@ -28,6 +29,14 @@ export interface UIState {
   renderScale: number
   /** Echo pulse charge: 0 right after a pulse … 1 ready (quantised by the engine). */
   pulseCharge: number
+
+  // --- Lane A fields (docs/coordination.md §4) ---
+  /** Region the player is in, set on `regionEnter`; drives the HUD region title. */
+  region: RegionId | null
+  /** Interaction hint, e.g. "Activate pillar"; null hides it. */
+  interactPrompt: string | null
+
+  // --- Lane B fields ---
 }
 
 type Listener = () => void
@@ -78,4 +87,10 @@ export const uiStore = createStore<UIState>({
   quality: 'high',
   renderScale: 1,
   pulseCharge: 1,
+
+  // --- Lane A ---
+  region: null,
+  interactPrompt: null,
+
+  // --- Lane B ---
 })

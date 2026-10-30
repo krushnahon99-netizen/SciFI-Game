@@ -7,6 +7,12 @@
 
 **Repo:** https://github.com/krushnahon99-netizen/SciFI-Game (public, branch `main`)
 
+> **PARALLEL MODE (since 2026-10-30):** two chats work at the same time on separate accounts: **Chat A** (world &
+> gameplay) and **Chat B** (systems & UI). After this file, read [`docs/coordination.md`](docs/coordination.md):
+> it says which lane does what, who owns which files, and how to save. It overrides §0 step 5 and §7 while
+> parallel mode is on. Lane status lives in `docs/lane-a.md` / `docs/lane-b.md`; this file stays frozen until
+> both lanes finish. Start prompts for each chat: coordination §8.
+
 ---
 
 ## 0. Resume protocol (do this EVERY session)
@@ -194,7 +200,7 @@ game/                   Framework-agnostic engine (plain TypeScript + three)
   physics/collision.ts  colliders, spatial hash, player resolution, camera ray tests
   player/               player.ts (controller), avatar.ts (model + procedural animation), camera.ts (third-person rig, cinematic mode)
   echo/                 echoSystem.ts (pulses, uniforms, shell visuals), reactive.ts (reactive object types)
-  gameplay/             interactables.ts, puzzles.ts, progression.ts (state, save/load), content.ts (all story text), regions.ts (area discovery)
+  gameplay/             interactables.ts, puzzles.ts, progression.ts (state, save/load), content.ts (all story text), regions.ts (area discovery), ids.ts (shared IDs + ProgressView)
   audio/audio.ts        procedural Web Audio engine
   ui/store.ts           engine → React bridge (external store)
 docs/GAME_SPEC.md       original brief (verbatim)
@@ -282,3 +288,4 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M2b | 2026-10-30 | 6th session: reactive registry + 5 reactive types + Cradle echo content (see §3). tsc clean, browser-verified except phase expiry. Saved at $0.27 left. |
 | M3a-1 | 2026-10-30 | 7th session (chat h1YhUrArccr) built the Sundered Monolith (see §3) but ran out of credits right after pushing `v0/echo-m3a`, so it never reached `main` and these docs weren't updated. 8th session: tsc clean, fast-forwarded `main`, updated docs. |
 | M3a-2 | 2026-10-30 | 8th session: Hall of Echoes (see §3). tsc clean, browser-verified. |
+| parallel | 2026-10-30 | 9th session: switched to two chats in parallel. `docs/coordination.md` (lanes, file ownership, contracts, saving, discussion, requests, start prompts), `docs/lane-a.md`, `docs/lane-b.md`; contracts as types in `gameplay/ids.ts`, `core/events.ts`, `ui/store.ts`. Further status goes to the lane files. |
