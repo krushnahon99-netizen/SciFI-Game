@@ -6,7 +6,9 @@ import { uiStore } from '@/game/ui/store'
 import { BootOverlay } from './boot-overlay'
 import { GameContext } from './game-context'
 import { Hud } from './hud'
+import { IntroOverlay } from './intro-overlay'
 import { PauseMenu } from './pause-menu'
+import { TitleScreen } from './title-screen'
 
 function describeStartupError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
@@ -20,6 +22,8 @@ function describeStartupError(error: unknown): string {
 export function EchoGame() {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [game, setGame] = useState<Game | null>(null)
+  // Each run is one Game instance; a new journey erases the save and rebuilds the world straight into the intro.
+  const [run, setRun] = useState({ id: 0, intro: false })
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -31,7 +35,7 @@ export function EchoGame() {
       .then(({ Game }) => {
         if (cancelled) return
         instance = new Game(viewport)
-        instance.start()
+        instance.start({ intro: run.intro })
         setGame(instance)
       })
       .catch((error: unknown) => {
@@ -45,7 +49,12 @@ export function EchoGame() {
       instance = null
       setGame(null)
     }
-  }, [])
+  }, [run])
+
+  const newJourney = () => {
+    game?.progression.discard()
+    setRun((current) => ({ id: current.id + 1, intro: true }))
+  }
 
   return (
     <GameContext.Provider value={game}>
@@ -58,6 +67,8 @@ export function EchoGame() {
           aria-label="ECHO game view. Click to capture the mouse, then use W A S D to move."
         />
         <Hud />
+        <TitleScreen onNewJourney={newJourney} />
+        <IntroOverlay />
         <PauseMenu />
         <BootOverlay />
       </main>

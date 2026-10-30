@@ -45,6 +45,10 @@ export interface UIState {
   /** Master volume 0–1 and mute (pause menu; M toggles mute). */
   volume: number
   muted: boolean
+  /** Title screen: a save worth continuing exists (read when the Game starts). */
+  canContinue: boolean
+  /** Intro line on screen (index into INTRO.lines), −1 between lines. */
+  introLine: number
 }
 
 type Listener = () => void
@@ -105,4 +109,6 @@ export const uiStore = createStore<UIState>({
   notices: [],
   volume: 0.8,
   muted: false,
+  canContinue: false,
+  introLine: -1,
 })

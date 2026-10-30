@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { Intro, titleShot } from '../gameplay/intro'
 import { Progression } from '../gameplay/progression'
 import { RegionTracker } from '../gameplay/regions'
 import { Avatar } from '../player/avatar'
@@ -23,6 +24,11 @@ const PERF_SAMPLE_SECONDS = 0.5
 const PHASE_TOGGLE_DEBOUNCE_MS = 300
 /** Height of the backpack core (the pulse emitter) above the player's feet. */
 const PULSE_EMITTER_HEIGHT = 1.3
+/** Camera blend rates (per second) for the title shot, Continue, the intro's descent and leaving the intro. */
+const TITLE_SHOT_RATE = 60
+const CONTINUE_BLEND_RATE = 2.5
+const INTRO_GLIDE_RATE = 0.35
+const INTRO_EXIT_RATE = 2
 
 /** Owns the loop, the phase state machine and every engine system. The React UI talks to it through public methods. */
 export class Game {
@@ -47,6 +53,8 @@ export class Game {
   private readonly cameraRig: CameraRig
   /** Free-fly debug camera (F4); null while the third-person camera is active. */
   private spectator: Spectator | null = null
+  /** Lane B: the opening sequence, alive only during the 'intro' phase. */
+  private intro: Intro | null = null
   private phase: GamePhase = 'boot'
   private phaseChangedAt = 0
   /** Wall-clock seconds for ambient animation (keeps running while paused). */
@@ -117,12 +125,37 @@ export class Game {
     return QUALITY_PRESETS[this.settings.quality]
   }
 
-  start() {
-    this.setPhase('playing')
+  /** Opens on the title screen over the live world; `intro` goes straight to the intro (new journey). */
+  start(options: { intro?: boolean } = {}) {
+    const shot = titleShot((x, z) => this.world.heightAt(x, z))
+    this.cameraRig.setCinematic(shot.position, shot.target, TITLE_SHOT_RATE)
+    uiStore.setState({ canContinue: Progression.hasSave() })
+    if (options.intro) this.beginIntro()
+    else this.setPhase('title')
     this.renderSystem.renderer.setAnimationLoop(this.frame)
   }
 
   // --- Public API for the UI -----------------------------------------------------------------
+
+  /** Title → play the saved journey. Call from a click so the browser allows capturing the mouse. */
+  continueJourney() {
+    if (this.phase !== 'title') return
+    this.cameraRig.clearCinematic(CONTINUE_BLEND_RATE)
+    this.setPhase('playing')
+    this.input.requestPointerLock()
+  }
+
+  /** Title → intro → play, for a journey without a save. */
+  beginJourney() {
+    if (this.phase === 'title') this.beginIntro()
+  }
+
+  /** Call from a click so the browser allows capturing the mouse (Esc also skips, without capturing). */
+  skipIntro() {
+    if (this.phase !== 'intro') return
+    this.intro?.finish()
+    this.input.requestPointerLock()
+  }
 
   pause() {
     if (this.phase !== 'playing') return
@@ -197,6 +230,19 @@ export class Game {
     this.events.emit('phase', { from, to: next })
   }
 
+  private beginIntro() {
+    this.setPhase('intro')
+    this.intro = new Intro({
+      glide: () => this.cameraRig.clearCinematic(INTRO_GLIDE_RATE),
+      pulse: () => this.emitPulse(),
+      finish: () => {
+        this.intro = null
+        this.cameraRig.clearCinematic(INTRO_EXIT_RATE)
+        this.setPhase('playing')
+      },
+    })
+  }
+
   private applyQuality() {
     const quality = this.qualitySettings
     const { shadowsChanged } = this.renderSystem.applyQuality(quality, this.settings.renderScale)
@@ -239,20 +285,23 @@ export class Game {
     this.time += dt
     this.handleSystemActions()
     const playing = this.phase === 'playing'
+    // The world keeps moving under the intro (its first pulse must spread); only 'playing' takes input.
+    const live = playing || this.phase === 'intro'
     if (playing) this.progression.update(dt)
+    if (this.phase === 'intro') this.intro?.update(dt)
     if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
-    this.echo.update(playing ? dt : 0)
-    this.reactives.update(this.echo.clock, playing ? dt : 0)
+    this.echo.update(live ? dt : 0)
+    this.reactives.update(this.echo.clock, live ? dt : 0)
     if (this.spectator) {
       if (playing) this.spectator.update(dt, this.input, (x, z) => this.world.heightAt(x, z))
     } else {
       if (playing && !this.cameraRig.inCinematic) {
         this.cameraRig.applyLook(this.input)
         this.player.update(dt, this.input, this.cameraRig.yaw)
-      } else if (playing) {
+      } else if (live) {
         this.player.update(dt, null, this.cameraRig.yaw)
       }
-      this.avatar.update(playing ? dt : 0, this.player, this.time)
+      this.avatar.update(this.phase === 'paused' ? 0 : dt, this.player, this.time)
       this.cameraRig.update(dt, this.player.position)
       if (playing) this.regions.update(this.player.position)
     }
@@ -290,6 +339,7 @@ export class Game {
     if (input.wasPressed('pause') && performance.now() - this.phaseChangedAt > PHASE_TOGGLE_DEBOUNCE_MS) {
       if (this.phase === 'playing') this.pause()
       else if (this.phase === 'paused') this.resume()
+      else if (this.phase === 'intro') this.intro?.finish()
     }
   }
 

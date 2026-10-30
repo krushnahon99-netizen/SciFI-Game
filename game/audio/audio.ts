@@ -186,7 +186,7 @@ export class AudioEngine {
     const graph = this.graph
     if (graph) graph.duck.gain.setTargetAtTime(this.paused ? PAUSE_DUCK : 1, graph.kit.ctx.currentTime, 0.12)
     if (to === 'paused') this.play((kit) => sfx.uiCue(kit, 'open'))
-    else if (from === 'paused') this.play((kit) => sfx.uiCue(kit, 'close'))
+    else if (from === 'paused' || from === 'title') this.play((kit) => sfx.uiCue(kit, 'close'))
   }
 
   private applyMaster() {
