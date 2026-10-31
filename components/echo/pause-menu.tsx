@@ -1,127 +1,114 @@
 'use client'
 
-import { Volume2, VolumeX } from 'lucide-react'
-import { SETTINGS_TEXT } from '@/game/gameplay/content'
-import { QUALITY_LEVELS, QUALITY_PRESETS } from '@/game/render/quality'
+import { useId, type KeyboardEvent } from 'react'
+import { PAUSE } from '@/game/gameplay/content'
+import { uiStore, type MenuTab } from '@/game/ui/store'
 import { cn } from '@/lib/utils'
 import { useGame } from './game-context'
+import { MENU_PRIMARY, MENU_SECONDARY, dropFocus } from './menu'
+import { ControlsPanel, JournalPanel, SettingsPanel } from './menu-panels'
 import { useUI } from './use-ui'
 
-/** Minimal pause menu with audio and graphics settings. The full menu (journal, controls) arrives in M5a. */
+const TABS: readonly { id: MenuTab; label: string }[] = [
+  { id: 'journal', label: PAUSE.journal },
+  { id: 'settings', label: PAUSE.settings },
+  { id: 'controls', label: PAUSE.controls },
+]
+
+/** Pause menu: journal / settings / controls tabs, Resume and Return to title. J opens it on the journal. */
 export function PauseMenu() {
   const game = useGame()
   const phase = useUI((state) => state.phase)
-  const quality = useUI((state) => state.quality)
-  const renderScale = useUI((state) => state.renderScale)
-  const volume = useUI((state) => state.volume)
-  const muted = useUI((state) => state.muted)
+  const tab = useUI((state) => state.menuTab)
+  const cinematic = useUI((state) => state.cinematic)
+  const baseId = useId()
 
   if (phase !== 'paused') return null
 
+  const tabId = (id: MenuTab) => `${baseId}-tab-${id}`
+  const select = (id: MenuTab) => uiStore.setState({ menuTab: id })
   const resume = () => {
-    // Drop focus so Space reaches the game instead of re-clicking this button.
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    dropFocus()
     game?.resume()
   }
-  const volumePercent = Math.round(volume * 100)
+  const toTitle = () => {
+    dropFocus()
+    game?.returnToTitle()
+  }
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+    if (step === 0) return
+    event.preventDefault()
+    const index = TABS.findIndex((entry) => entry.id === tab)
+    const next = TABS[(index + step + TABS.length) % TABS.length]
+    select(next.id)
+    document.getElementById(tabId(next.id))?.focus()
+  }
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/55 p-4 backdrop-blur-[2px]">
       <section
         role="dialog"
         aria-modal="true"
-        aria-labelledby="pause-title"
-        className="w-full max-w-sm rounded-xl border border-border bg-card/85 p-6 shadow-2xl backdrop-blur-md"
+        aria-labelledby={`${baseId}-title`}
+        className="flex h-[min(40rem,100%)] w-full max-w-md flex-col rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-md"
       >
-        <h2 id="pause-title" className="font-display text-sm tracking-[0.4em] text-foreground">
-          PAUSED
+        <h2
+          id={`${baseId}-title`}
+          className="px-5 pt-5 font-display text-sm uppercase tracking-[0.4em] text-foreground sm:px-6 sm:pt-6"
+        >
+          {PAUSE.title}
         </h2>
 
-        <fieldset className="mt-6">
-          <legend className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">{SETTINGS_TEXT.audio}</legend>
-          <div className="mt-2 flex items-center gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={muted}
-              aria-label={SETTINGS_TEXT.mute}
-              onClick={() => game?.toggleMute()}
-              className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-md border transition-colors focus-visible:outline-2 focus-visible:outline-ring',
-                muted
-                  ? 'border-primary/70 bg-primary/15 text-primary'
-                  : 'border-border text-foreground/80 hover:border-foreground/30 hover:text-foreground',
-              )}
-            >
-              {muted ? <VolumeX className="size-4" aria-hidden="true" /> : <Volume2 className="size-4" aria-hidden="true" />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={volumePercent}
-              aria-label={SETTINGS_TEXT.volume}
-              aria-valuetext={muted ? SETTINGS_TEXT.muted : `${volumePercent}%`}
-              onChange={(event) => game?.setVolume(Number(event.target.value) / 100)}
-              className={cn('min-w-0 flex-1 accent-primary', muted && 'opacity-50')}
-            />
-            <span className="w-12 shrink-0 text-right font-mono text-xs text-foreground/85">
-              {muted ? SETTINGS_TEXT.muted : `${volumePercent}%`}
-            </span>
-          </div>
-        </fieldset>
-
-        <fieldset className="mt-5">
-          <legend className="text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">{SETTINGS_TEXT.graphics}</legend>
-          <div role="radiogroup" aria-label={SETTINGS_TEXT.graphics} className="mt-2 grid grid-cols-4 gap-1.5">
-            {QUALITY_LEVELS.map((level) => {
-              const selected = quality === level
-              return (
-                <button
-                  key={level}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => game?.setQuality(level)}
-                  className={cn(
-                    'rounded-md border px-2 py-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-ring',
-                    selected
-                      ? 'border-primary/70 bg-primary/15 text-primary'
-                      : 'border-border text-foreground/80 hover:border-foreground/30 hover:text-foreground',
-                  )}
-                >
-                  {QUALITY_PRESETS[level].label}
-                </button>
-              )
-            })}
-          </div>
-        </fieldset>
-
-        <label className="mt-5 block">
-          <span className="flex items-baseline justify-between text-[0.68rem] uppercase tracking-[0.22em] text-muted-foreground">
-            {SETTINGS_TEXT.renderScale}
-            <span className="font-mono tracking-normal text-foreground/85">{Math.round(renderScale * 100)}%</span>
-          </span>
-          <input
-            type="range"
-            min={50}
-            max={100}
-            step={5}
-            value={Math.round(renderScale * 100)}
-            onChange={(event) => game?.setRenderScale(Number(event.target.value) / 100)}
-            className="mt-2 w-full accent-primary"
-          />
-        </label>
-
-        <button
-          type="button"
-          autoFocus
-          onClick={resume}
-          className="mt-7 w-full rounded-md bg-primary py-2.5 text-sm font-medium tracking-wide text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        <div
+          role="tablist"
+          aria-label={PAUSE.title}
+          onKeyDown={onTabKey}
+          className="mx-5 mt-4 grid grid-cols-3 gap-1 rounded-lg border border-border bg-background/40 p-1 sm:mx-6"
         >
-          Resume
-        </button>
+          {TABS.map((entry) => {
+            const selected = entry.id === tab
+            return (
+              <button
+                key={entry.id}
+                id={tabId(entry.id)}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`${baseId}-panel`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => select(entry.id)}
+                className={cn(
+                  'rounded-md py-2 text-[0.68rem] uppercase tracking-[0.2em] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                  selected ? 'bg-primary/15 text-primary' : 'text-foreground/70 hover:text-foreground',
+                )}
+              >
+                {entry.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          id={`${baseId}-panel`}
+          role="tabpanel"
+          aria-labelledby={tabId(tab)}
+          tabIndex={0}
+          className="mt-4 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5 focus-visible:outline-none sm:px-6"
+        >
+          {tab === 'journal' ? <JournalPanel /> : tab === 'settings' ? <SettingsPanel /> : <ControlsPanel />}
+        </div>
+
+        <footer className="flex flex-col gap-2 border-t border-border px-5 py-4 sm:flex-row sm:px-6">
+          <button type="button" autoFocus onClick={resume} className={MENU_PRIMARY}>
+            {PAUSE.resume}
+          </button>
+          {!cinematic && (
+            <button type="button" onClick={toTitle} className={MENU_SECONDARY}>
+              {PAUSE.toTitle}
+            </button>
+          )}
+        </footer>
       </section>
     </div>
   )

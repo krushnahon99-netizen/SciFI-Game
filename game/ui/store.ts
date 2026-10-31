@@ -18,6 +18,8 @@ export interface PerfSnapshot {
   gpu: string
 }
 
+export type MenuTab = 'journal' | 'settings' | 'controls'
+
 export interface UIState {
   booted: boolean
   fatalError: string | null
@@ -51,6 +53,8 @@ export interface UIState {
   canContinue: boolean
   /** Intro line on screen (index into INTRO.lines), −1 between lines. */
   introLine: number
+  /** Pause menu tab; J opens the pause menu on the journal. */
+  menuTab: MenuTab
 }
 
 type Listener = () => void
@@ -114,4 +118,5 @@ export const uiStore = createStore<UIState>({
   muted: false,
   canContinue: false,
   introLine: -1,
+  menuTab: 'journal',
 })

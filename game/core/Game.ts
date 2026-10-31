@@ -416,6 +416,19 @@ export class Game {
     if (this.echo.trigger(origin)) this.avatar.flare()
   }
 
+  /** J: the pause menu on its journal tab; J again on that tab resumes. */
+  private toggleJournal() {
+    if (performance.now() - this.phaseChangedAt <= PHASE_TOGGLE_DEBOUNCE_MS) return
+    const onJournal = uiStore.getState().menuTab === 'journal'
+    if (this.phase === 'playing') {
+      uiStore.setState({ menuTab: 'journal' })
+      this.pause()
+    } else if (this.phase === 'paused') {
+      if (onJournal) this.resume()
+      else uiStore.setState({ menuTab: 'journal' })
+    }
+  }
+
   /** F4: detach a free-fly debug camera from the player (and back). */
   private toggleFreeCam() {
     if (this.spectator) {
@@ -430,6 +443,7 @@ export class Game {
     if (input.wasPressed('perf')) this.togglePerf()
     if (input.wasPressed('mute')) this.toggleMute()
     if (input.wasPressed('freecam') && this.phase === 'playing') this.toggleFreeCam()
+    if (input.wasPressed('journal')) this.toggleJournal()
     if (input.wasPressed('pause') && performance.now() - this.phaseChangedAt > PHASE_TOGGLE_DEBOUNCE_MS) {
       if (this.phase === 'playing') this.pause()
       else if (this.phase === 'paused') this.resume()

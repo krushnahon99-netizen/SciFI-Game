@@ -8,8 +8,8 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
       waiting for A's answer)
 - [x] M3d data: `gameplay/content.ts` + `gameplay/progression.ts` (implements `ProgressView`), objective + notices HUD
 - [x] M4 Procedural audio (`audio/*.ts`), volume + mute, A's four audio hooks
-- [ ] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
-      (M5a-1 title + intro and M5a-3 end screen done; M5a-2 pause tabs left)
+- [x] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
+      (M5a-1 by Chat B; M5a-3 and M5a-2 by Chat A)
 - [ ] M5b Touch controls, perf overlay, auto-quality
 - [ ] M6 prep (README checklist, known limitations)
 
@@ -69,6 +69,15 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   Shared button classes + `dropFocus()` moved to `components/echo/menu.ts` (title screen uses them).
   Dev: `__echo.finale.begin()` near the Stone, then `__echo.finale.elapsed = 12.75` skips to `endingStart`
   (headless runs the world pulse at ~1 FPS); or `__echo.events.emit('endingStart', {})`.
+- **Pause menu tabs** (M5a-2, Chat A). `components/echo/menu-panels.tsx`: `SettingsPanel` (the old pause controls:
+  mute switch, volume, quality radios, render scale), `ControlsPanel` (`CONTROLS` keyboard + touch as `<dl>` rows,
+  headings `CONTROL_GROUPS`), `JournalPanel` (current objective; "What the stone suggests" = the first `fails` hints
+  of each unsolved puzzle; memories / places / secrets with found/total, unknown entries dashed, a memory's region
+  shown once visited). `pause-menu.tsx`: fixed-height dialog, ARIA tablist (arrow keys move between tabs), scrolling
+  tabpanel, footer Resume + Return to title (hidden while `uiStore.cinematic`, i.e. paused mid-finale). The tab lives
+  in `uiStore.menuTab` (default journal); `J` (`Game.toggleJournal()`, debounced like Esc): playing → pause on the
+  journal; paused on another tab → journal; paused on the journal → resume. Title screen: Settings / Controls buttons
+  open the same panels in a card with Back (`TITLE_SCREEN.back`).
 
 ## Save path
 
@@ -82,14 +91,13 @@ write access (as GitHub `tspencer164-5346` had, whose work went to its own repo 
 
 ## Next steps
 
-0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here** (M5a-3 end screen done).
-   Progression also saves `spireOpen` (`spireOpened` event).
-1. After every pull, check coordination §7 for requests to B. (A answered everything in §6 / §7: plan AGREED.)
-2. **M5a-2** pause menu tabs: journal (fragments, places, secrets, hints from `fails`, current objective) / settings /
-   controls (`CONTROLS`), plus `PAUSE.toTitle` → `Game.returnToTitle()` (exists; hide the button while
-   `uiStore.cinematic`, i.e. paused mid-finale) and the title's Settings / Controls buttons (`TITLE_SCREEN.settings` /
-   `.controls`) opening the same panels. `J` (input action `journal`, listed in `CONTROLS`) should open the journal.
-3. Then M5b (touch controls, perf overlay polish, auto-quality).
+0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here.** M5a is complete.
+1. **M5b** next, saving after each part: (a) touch controls: `components/echo/touch-controls.tsx` driving the
+   `input.ts` virtual API (left joystick, drag-look on the right, Pulse / Jump / Interact (only while
+   `interactPrompt`) / Menu buttons, as listed in `CONTROLS.touch`), shown on coarse pointers only; (b) auto-quality
+   (`SETTINGS_TEXT.auto` exists; step the preset down on sustained low FPS unless the player picked one); (c) perf
+   overlay polish.
+2. Then M6 (README checklist, known limitations; fold lane files back into AGENTS.md, end parallel mode).
 4. Not testable yet: footsteps / land / puzzle / discovery cues fire only once Lane A emits those events (M3c / M3d);
    the M4 check fired them by hand through `__echo.events.emit(...)`.
 
@@ -106,3 +114,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M4-save | 2026-10-30 | Next B chat: merged `09822f2` plus A's unpushed M3a-4 save (`1691bda` on `v0/echo-a-m3b`; Game.ts conflict = both fields kept), subscribed audio to A's hooks (`puzzleStep.index`, `choirNote`, `phaseWarn`, `finaleStart`), docs. tsc clean, hooks browser-verified. |
 | M5a-1 | 2026-10-30 | Title phase over the live world (Continue / Begin / New journey + confirm → remount into the intro), letterboxed skippable intro (`gameplay/intro.ts`: lines, descent to the explorer, first pulse). Game.ts: `start({ intro })`, `continueJourney` / `beginJourney` / `skipIntro`, world live during `'intro'`. tsc clean; browser-verified at 432×632 (title, remount, lines, descent, pulse → `'playing'` in the Cradle, Esc skip). |
 | M5a-3 | 2026-10-31 | Chat A (no Chat B any more): end screen (`end-screen.tsx`: staged reveal, stats, inert-until-visible buttons), `Game.returnToTitle()`, `Finale.running`, shared `menu.ts`. tsc clean; browser-verified at 1280×800 (finale → ending, Return to title → Continue, Keep exploring → playing). |
+| M5a-2 | 2026-10-31 | Chat A: pause menu tabs (`menu-panels.tsx`: journal / settings / controls), Return to title, `J` journal toggle (`uiStore.menuTab`), title Settings / Controls panels. M5a complete. tsc clean; browser-verified (journal hints + entries, tabs, J open / switch / resume, title settings at 432×632). |

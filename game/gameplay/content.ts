@@ -302,6 +302,7 @@ export const TITLE_SCREEN = {
   confirmNew: 'Begin a new journey? Your saved progress will be erased.',
   confirm: 'Erase and begin',
   cancel: 'Keep my progress',
+  back: 'Back',
   headphones: 'Best with headphones',
 } as const
 
@@ -334,6 +335,11 @@ export const SETTINGS_TEXT = {
   graphics: 'Graphics quality',
   renderScale: 'Render scale',
   auto: 'Auto',
+} as const
+
+export const CONTROL_GROUPS = {
+  keyboard: 'Keyboard and mouse',
+  touch: 'Touch',
 } as const
 
 export interface ControlText {
