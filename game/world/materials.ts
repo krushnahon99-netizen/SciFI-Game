@@ -114,7 +114,7 @@ const METAL_COLOR = /* glsl */ `
   vec4 mT = texture(uEchoNoise, vWorldPos.zy * vec2(0.3, 0.07)) * mW.x
           + texture(uEchoNoise, vWorldPos.xz * 0.17 + 0.5) * mW.y
           + texture(uEchoNoise, vWorldPos.xy * vec2(0.3, 0.07) + 0.25) * mW.z;
-  float echoRust = smoothstep(0.55, 0.8, mT.r + mT.a * 0.25);
+  float echoRust = smoothstep(0.64, 0.86, mT.r + mT.a * 0.25);
   vec3 mRustColor = vec3(0.34, 0.19, 0.11) * (0.8 + 0.4 * mT.b);
   diffuseColor.rgb = mix(diffuseColor.rgb * (0.72 + 0.4 * mT.g), mRustColor, echoRust);
   float echoBump = mT.b * 0.02 + echoRust * 0.05;

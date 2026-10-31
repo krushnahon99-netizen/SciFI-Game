@@ -45,16 +45,31 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     `respawn`. Recovered from the M3b chat's auto-commit `d402724` (`v0/echo-a-m3b`, never on `main`); its extra
     `playerRespawn` event was replaced by the existing `respawn`. Browser-verified: reveal order, standing mid-span
     (y 5.14), fall → respawn on the west landing.
+  - [x] M3b-2 Conduit Works: `world/structures/works.ts` `buildWorks()` returns `ConduitWorks { nodes (3 `GridNode`:
+    `position` = plinth-top centre, `charge`, `setCharge(0..1)` lights cell + plinth ring + floor conduit), core
+    (Vector3), setPower(0..1) (core, hub rings, main conduit to the vault), door: VaultDoor }`, kept as `World.works`.
+    Hub dais (r 7.2) with a leaning reactor cage (6 beams, 2 snapped, crown + mid ring arcs) and a floating dormant
+    core; nodes at `GRID_NODES` (layout; 26–48 m apart, so one pulse can't charge two); two hyperboloid cooling towers
+    (`LatheGeometry`, one snapped + shell fragments), twin tanks, pipe run, fallen beam, crates. Undervault vault house
+    at `UNDERVAULT` (layout `VAULT` + `vaultPoint()`, local +z faces the hub): roofless 8 m walls, buttresses, door
+    pylons, three-node seal; `VaultDoor.open(instant?)` sinks the slab 5.7 m in 5 s, the collider top follows it down
+    and is disabled at the end. Echoes: whole cage + tower, vault roof, live arcs node → core (the puzzle hint), 5 ghost
+    crew, 2 crystal clusters. Shared: `Batch` moved to `world/geometry.ts`, `createMetalMaterial()`, plateau dead-flat
+    out to r 26. Recovered the previous chat's partial edits from `553768f` (`v0/echo-a-m3b-bridge`).
+    Browser-verified: layout, pulse (past state, arcs, ghosts), nodes + core lit, door sinks and its collider turns off.
 - [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
 - [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
 
 ## Next steps
 
 1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3b structures, one sub-milestone each (M3b-1 Glass Bridge is done): M3b-2 Conduit Works (facility, 3 power-node
-   plinths for the Dormant Grid, sealed door gate), M3b-3 Undervault (sunken chamber; then fix its volume and spawn in
-   `layout.ts`), M3b-4 Listening Spire (ramp top, energy barrier).
+2. M3b structures (M3b-1 Glass Bridge and M3b-2 Conduit Works are done): **M3b-3 Undervault** next: a sunken chamber
+   inside the vault walls (carve a pit in `sampleTerrain()` inside `VAULT`, stairs down from the door, Heart Key
+   pedestal), then fix the `undervault` volume and spawn in `layout.ts` (now: circle r 9 and a point 7 m inside the
+   door). Then M3b-4 Listening Spire (ramp top, energy barrier).
 3. M3c: the Glass Bridge puzzle only needs `World.bridge` (crossing while solid → `stabilize()` + `puzzleSolved`).
+   Dormant Grid: on each `pulse`, charge `World.works.nodes` within range of the origin (~12 m), decay over ~15 s,
+   all three charged → `works.setPower(1)` + `works.door.open()` + `puzzleSolved`; on load `door.open(true)`.
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -67,3 +82,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3a-4 | 2026-10-30 | Region volumes + spawn points (`layout.ts`), `RegionTracker` (`regionEnter`, `uiStore.region`), HUD region title. tsc clean, browser-verified. Still no reply from B in §6. |
 | M3a-4-save | 2026-10-30 | Next session: the M3a-4 chat (EVt1YlLaLFM) had pushed only to `v0/check-saved-content-7c6445ae` because B's merge reached `main` first. Merged it (Game.ts / hud.tsx: kept both sides), region title now uses B's `REGIONS`, answered B in §6 (AGREED) and §7, typed B's audio hooks in `events.ts`. |
 | M3b-1 | 2026-10-31 | Recovered the Glass Bridge from orphan `d402724` and merged it with B's M4/M5a-1 (Game.ts: kept B's avatar line + A's fall check; `respawn` event). tsc clean, browser-verified. |
+| M3b-2 | 2026-10-31 | Chat UZLjCTVV9He ran out of credits mid-step (partial edits auto-committed as `553768f`, off `main`). Next chat: wrote `works.ts` (hub, grid nodes, towers, tanks, vault house + sinking door, echoes), `World.works`, toned down metal rust. tsc clean, browser-verified. |
