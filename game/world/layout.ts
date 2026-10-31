@@ -1,5 +1,5 @@
 import { Vector3 } from 'three'
-import type { RegionId } from '../gameplay/ids'
+import type { FragmentId, RegionId } from '../gameplay/ids'
 
 /**
  * ALL world coordinates live here (single source of truth).
@@ -292,6 +292,24 @@ export const SPIRE = {
 export const DROWNED_BELL = { x: 100, z: 28, radius: 24, depth: 6.5 }
 export const GHOST_GARDEN = { x: -150, z: 205 }
 export const SLEEPING_GIANT = { x: -222, z: 22 }
+
+/**
+ * Memory fragments (gameplay/fragments.ts): ground spot per fragment; the anchor height comes from the ground or the
+ * collider top there (dais tiers, the Undervault floor). Visible ones stand on a plinth beside the route, pulse-only
+ * ones (content.ts `pulseOnly`) hide near a landmark.
+ */
+export const FRAGMENT_SPOTS: Readonly<Record<FragmentId, { readonly x: number; readonly z: number }>> = {
+  f01: { x: -1.5, z: 213 },
+  f02: { x: -4, z: 184 },
+  f03: { x: -74.5, z: 106 },
+  f04: { x: -70, z: 83 },
+  f05: { x: -147, z: -34 },
+  f06: { x: -189, z: -32 },
+  f07: { x: -3, z: -31 },
+  f08: { x: 133, z: -139 },
+  f09: vaultPoint(5.5, -2.5),
+  f10: { x: SPIRE.x - 4.5, z: SPIRE.z + 2 },
+}
 
 /** Outer cliff rim: low toward the sun azimuth so it doesn't shadow the valleys. */
 export const RIM = { radius: 300, wobble: 16, cliffWidth: 30, low: 24, high: 72 }

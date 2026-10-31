@@ -108,16 +108,24 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     `phaseWarn`, bridge crossing, all three restored after a reload. Dev: `__echo.emitPulse()`,
     `__echo.puzzles.choir.attune(i)`.
 - [ ] M3d world side: fragments, secrets, Heart Key placement, load spawn, finale
+  - [x] M3d-1 Memory fragments + load spawn: `gameplay/fragments.ts` `Fragments` (`Game.fragments`, `list` of
+    `MemoryFragment`: `id`, `center`, `recovered`). Spots in layout `FRAGMENT_SPOTS` (anchor = max(ground, collider
+    top) + hover, measured before the plinth collider is added; all 10 checked flat, no wall within 1.5 m; f09 on the
+    Undervault floor, f10 inside the Spire barrier on a summit tier). Visible ones: stone plinth (cylinder collider) +
+    glyph inlay, shard (energy material) in 2 orbiting rings, slim additive light column (`echo.fragmentBeam`, own
+    ShaderMaterial, never fully fades with distance = beacon). Pulse-only ones (f02 f04 f06 f07 f09): no plinth,
+    registered as `'trigger'` reactives, invisible until the wavefront arrives, then shown for 16 s (`RevealTimer`) and
+    only usable above 35 %. E (`PROMPTS.recoverMemory`) → `fragmentFound`, lift-and-dissolve over 1.5 s, inlay dims.
+    Found ones (`progress.has`) are built hidden. Per-frame call is `tick()` (not `update`: the registry would call it).
+    Load spawn: `Game.continueJourney()` → `placeAt(progression.checkpoint)` (shared with `respawn()`).
+    Browser-verified: look on Low, prompt + recovery + notice + save, f02 hidden → pulse → prompt, reload + Continue
+    → Vale spawn with f01 still recovered.
 
 ## Next steps
 
 1. **Owner, 2026-10-31: there is no Chat B any more.** Chat A finishes Lane A, then continues Lane B from
    `docs/lane-b.md` "Next steps" (M5a-2 pause tabs, M5a-3 end screen, M5b), then M6. B's files may be edited freely.
-2. **M3d world side** next, in two saves:
-   - M3d-1: 10 memory fragments (`FRAGMENTS` in content.ts: region, `pulseOnly` f02 f04 f06 f07 f09) as interactables
-     (`PROMPTS.recoverMemory`) → `fragmentFound`; pulse-only ones are only visible/usable for a while after a pulse;
-     skip found ones on load (`progress.has(id)`). Load spawn: `Game.continueJourney()` should put the player at
-     `REGION_SPAWNS[progression.checkpoint]` (now always `SPAWN`).
+2. **M3d world side** next (M3d-1 fragments + load spawn is done):
    - M3d-2: secrets (Ghost Garden: reach the top phase stone; Sleeping Giant: buried statue a pulse reveals, then
      interact; Drowned Bell: pulse inside the crater) → `secretFound`; Heart Key: interact at `World.undervault.key`
      (`take()`, `PROMPTS.takeHeartKey`) → `itemFound`; barrier: holding the key within ~4 m of `World.spire.gate`
@@ -139,3 +147,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3b-3 | 2026-10-31 | Two chats (uyj6eVOtBnp, Y2KvllYEyFb) ran out mid-step; their auto-commits `d7ac0ed` + `0b1f7c4` held the whole Undervault (chamber, Heart Key, terrain hole, chamber glow, step-up + `onCollider` physics). Next chat verified the door walk-out fix and saved it. tsc clean, browser-verified. |
 | M3b-4 | 2026-10-31 | Listening Spire summit (Stone, vanes, crown, barrier ring with Heart gate), ramp waystones + foot gate, echoes; `World.spire`. M3b done. tsc clean, browser-verified. |
 | M3c | 2026-10-31 | Interactables + HUD prompt, Choir Sequence (ghost replay, attune, gate), Glass Bridge (crossing → stable), Dormant Grid (timed node charges → door), `phaseWarn`, restore on load. tsc clean, browser-verified. Owner: no Chat B any more; A continues Lane B afterwards. |
+| M3d-1 | 2026-10-31 | Memory fragments (`gameplay/fragments.ts`, `FRAGMENT_SPOTS`): plinth + shard + beacon, pulse-only reveal, recovery → `fragmentFound`, restore on load; Continue spawns at the saved checkpoint. tsc clean, browser-verified. |

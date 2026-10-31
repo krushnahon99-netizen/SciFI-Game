@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { Fragments } from '../gameplay/fragments'
+import type { RegionId } from '../gameplay/ids'
 import { Interactables } from '../gameplay/interactables'
 import { Intro, titleShot } from '../gameplay/intro'
 import { Progression } from '../gameplay/progression'
@@ -51,6 +53,8 @@ export class Game {
   readonly interactables = new Interactables()
   /** Choir Sequence, Glass Bridge, Dormant Grid; solved state is restored from `progression` when built. */
   readonly puzzles: Puzzles
+  /** The ten memory fragments; recovered ones (from `progression`) stay hidden. */
+  readonly fragments: Fragments
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -106,6 +110,14 @@ export class Game {
     this.echo = new EchoSystem(this.scene, this.events)
     this.regions = new RegionTracker(this.events)
     this.puzzles = new Puzzles(this.scene, this.world, this.events, this.progression, this.interactables)
+    this.fragments = new Fragments(
+      this.scene,
+      this.world.collision,
+      this.reactives,
+      this.interactables,
+      this.events,
+      this.progression,
+    )
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -147,6 +159,7 @@ export class Game {
   /** Title → play the saved journey. Call from a click so the browser allows capturing the mouse. */
   continueJourney() {
     if (this.phase !== 'title') return
+    this.placeAt(this.progression.checkpoint)
     this.cameraRig.clearCinematic(CONTINUE_BLEND_RATE)
     this.setPhase('playing')
     this.input.requestPointerLock()
@@ -316,6 +329,7 @@ export class Game {
       if (playing) this.regions.update(this.player.position)
     }
     this.puzzles.update(this.echo.clock, live ? dt : 0, this.player.position)
+    this.fragments.update(this.echo.clock, live ? dt : 0, this.time)
     const reach = playing && !this.spectator && !this.cameraRig.inCinematic ? this.player.position : null
     this.interactables.update(reach, reach !== null && this.input.wasPressed('interact'))
     const focus = this.spectator ? this.camera.position : this.player.position
@@ -326,10 +340,15 @@ export class Game {
   /** Fell into the chasm: back to the current region's spawn point, camera facing on. */
   private respawn() {
     const region = this.regions.current ?? 'cradle'
+    this.placeAt(region)
+    this.events.emit('respawn', { region })
+  }
+
+  /** Explorer to the region's spawn point, camera facing on (respawn, and Continue at the saved checkpoint). */
+  private placeAt(region: RegionId) {
     const spawn = REGION_SPAWNS[region]
     this.player.teleport(spawn.x, spawn.z, spawn.yaw)
     this.cameraRig.yaw = spawn.yaw
-    this.events.emit('respawn', { region })
   }
 
   /** Q / click: pulse from the explorer's backpack core (from the camera while free-flying). */
