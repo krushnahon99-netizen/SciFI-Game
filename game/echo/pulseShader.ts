@@ -14,15 +14,26 @@ export const GLYPH_DURATION = 6
 /** Start time of an unused slot: far enough in the past that every shader term evaluates to zero. */
 export const PULSE_INACTIVE = -1e4
 
+/** Wavefront speed (m/s) and dissolve radius (m) of one pulse; every slot carries its own (`uEchoPulseShapes`). */
+export interface PulseShape {
+  readonly speed: number
+  readonly radius: number
+}
+/** The explorer's pulse. */
+export const PLAYER_PULSE: PulseShape = { speed: PULSE_SPEED, radius: PULSE_RADIUS }
+/** The finale: the Listening Stone's pulse sweeps the whole world. */
+export const WORLD_PULSE: PulseShape = { speed: 60, radius: 900 }
+
 const f = (n: number) => n.toFixed(4)
 
 /** Needs `uEchoNoise` and `uEchoTime` declared first. Provides `echoPulseEmission(worldPos, worldNormal)`. */
 export const PULSE_GLSL = /* glsl */ `
 uniform vec4 uEchoPulses[${PULSE_SLOTS}];
+// Per slot: wavefront speed (x, m/s) and dissolve radius (y, m).
+uniform vec2 uEchoPulseShapes[${PULSE_SLOTS}];
 uniform float uEchoClock;
 
-const float ECHO_PULSE_SPEED = ${f(PULSE_SPEED)};
-const float ECHO_PULSE_RADIUS = ${f(PULSE_RADIUS)};
+const float ECHO_BASE_SPEED = ${f(PULSE_SPEED)};
 const float ECHO_GLYPH_DURATION = ${f(GLYPH_DURATION)};
 const vec3 ECHO_PULSE_TINT = vec3(0.32, 0.86, 1.0);
 // More saturated than the front so the lit glyphs stay cyan instead of clipping to white.
@@ -76,13 +87,16 @@ vec3 echoPulseEmission(vec3 p, vec3 n) {
   float ignite = 0.0;
   for (int i = 0; i < ${PULSE_SLOTS}; i++) {
     vec4 pulse = uEchoPulses[i];
+    vec2 shape = uEchoPulseShapes[i];
     float age = uEchoClock - pulse.w;
     float dist = distance(p, pulse.xyz);
-    float x = dist - age * ECHO_PULSE_SPEED;
-    float life = 1.0 - smoothstep(0.45, 1.0, age * ECHO_PULSE_SPEED / ECHO_PULSE_RADIUS);
-    front += exp(-x * x * (x > 0.0 ? 2.5 : 0.35)) * life;
-    float since = -x / ECHO_PULSE_SPEED;
-    float range = 1.0 - smoothstep(0.75, 1.0, dist / ECHO_PULSE_RADIUS);
+    float x = dist - age * shape.x;
+    float life = 1.0 - smoothstep(0.45, 1.0, age * shape.x / shape.y);
+    // Faster pulses get a proportionally wider band, so the front lights each point for the same time.
+    float width = ECHO_BASE_SPEED / shape.x;
+    front += exp(-x * x * (x > 0.0 ? 2.5 : 0.35) * width * width) * life;
+    float since = -x / shape.x;
+    float range = 1.0 - smoothstep(0.75, 1.0, dist / shape.y);
     float shown = smoothstep(0.0, 0.2, since)
                 * (1.0 - smoothstep(ECHO_GLYPH_DURATION * 0.45, ECHO_GLYPH_DURATION, since)) * range;
     reveal = max(reveal, shown);

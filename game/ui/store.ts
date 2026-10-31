@@ -36,6 +36,8 @@ export interface UIState {
   region: RegionId | null
   /** Interaction hint, e.g. "Activate pillar"; null hides it. */
   interactPrompt: string | null
+  /** A gameplay cinematic (the finale) holds the camera: the HUD hides. */
+  cinematic: boolean
 
   // --- Lane B fields ---
   /** Saved progress for the objective, journal and end screen (gameplay/progression.ts); null before boot. */
@@ -103,6 +105,7 @@ export const uiStore = createStore<UIState>({
   // --- Lane A ---
   region: null,
   interactPrompt: null,
+  cinematic: false,
 
   // --- Lane B ---
   progress: null,

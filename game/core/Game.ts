@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { Finale } from '../gameplay/finale'
 import { Fragments } from '../gameplay/fragments'
 import type { RegionId } from '../gameplay/ids'
 import { Interactables } from '../gameplay/interactables'
@@ -57,6 +58,8 @@ export class Game {
   /** The ten memory fragments; recovered ones (from `progression`) stay hidden. */
   readonly fragments: Fragments
   readonly secrets: Secrets
+  /** Heart Key, Spire barrier and the Listening Stone's finale; restored from `progression` when built. */
+  readonly finale: Finale
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -121,6 +124,26 @@ export class Game {
       this.progression,
     )
     this.secrets = new Secrets(this.events, this.progression, this.world.giant, this.interactables)
+    this.finale = new Finale(
+      this.scene,
+      this.events,
+      this.progression,
+      this.world.undervault.key,
+      this.world.spire,
+      this.interactables,
+      this.player.position,
+      {
+        shot: (position, target, rate) => {
+          this.cameraRig.setCinematic(position, target, rate)
+          uiStore.setState({ cinematic: true })
+        },
+        pulse: (origin) => this.echo.broadcast(origin),
+      },
+    )
+    this.events.on('endingStart', () => {
+      this.setPhase('ending')
+      this.input.exitPointerLock()
+    })
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -177,6 +200,15 @@ export class Game {
   skipIntro() {
     if (this.phase !== 'intro') return
     this.intro?.finish()
+    this.input.requestPointerLock()
+  }
+
+  /** End screen → free roam where the finale left the explorer. Call from a click (pointer lock needs a gesture). */
+  keepExploring() {
+    if (this.phase !== 'ending') return
+    this.cameraRig.clearCinematic(CONTINUE_BLEND_RATE)
+    uiStore.setState({ cinematic: false })
+    this.setPhase('playing')
     this.input.requestPointerLock()
   }
 
@@ -241,7 +273,7 @@ export class Game {
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
     this.events.clear()
-    uiStore.setState({ booted: false, phase: 'boot', pointerLocked: false, region: null })
+    uiStore.setState({ booted: false, phase: 'boot', pointerLocked: false, region: null, cinematic: false })
   }
 
   // --- Internals -------------------------------------------------------------------------------
@@ -311,8 +343,8 @@ export class Game {
     this.time += dt
     this.handleSystemActions()
     const playing = this.phase === 'playing'
-    // The world keeps moving under the intro (its first pulse must spread); only 'playing' takes input.
-    const live = playing || this.phase === 'intro'
+    // The world keeps moving under the intro (its first pulse must spread) and the ending; only 'playing' takes input.
+    const live = playing || this.phase === 'intro' || this.phase === 'ending'
     if (playing) this.progression.update(dt)
     if (this.phase === 'intro') this.intro?.update(dt)
     if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
@@ -334,6 +366,7 @@ export class Game {
     }
     this.puzzles.update(this.echo.clock, live ? dt : 0, this.player.position)
     this.fragments.update(this.echo.clock, live ? dt : 0, this.time)
+    this.finale.update(live ? dt : 0, this.time)
     const reach = playing && !this.spectator && !this.cameraRig.inCinematic ? this.player.position : null
     this.interactables.update(reach, reach !== null && this.input.wasPressed('interact'))
     this.secrets.update(reach)

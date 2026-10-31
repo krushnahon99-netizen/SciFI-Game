@@ -107,7 +107,7 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
   - Browser-verified: replay order + singers, prompt + E press, wrong-note reset, solve + gate, grid solve + door,
     `phaseWarn`, bridge crossing, all three restored after a reload. Dev: `__echo.emitPulse()`,
     `__echo.puzzles.choir.attune(i)`.
-- [ ] M3d world side: fragments, secrets, Heart Key placement, load spawn, finale
+- [x] M3d world side: fragments, secrets, Heart Key placement, load spawn, finale
   - [x] M3d-1 Memory fragments + load spawn: `gameplay/fragments.ts` `Fragments` (`Game.fragments`, `list` of
     `MemoryFragment`: `id`, `center`, `recovered`). Spots in layout `FRAGMENT_SPOTS` (anchor = max(ground, collider
     top) + hover, measured before the plinth collider is added; all 10 checked flat, no wall within 1.5 m; f09 on the
@@ -141,16 +141,31 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
       (snapped post, stub, broken top, crossbeam pieces; colliders). Echo: the bell hanging in its intact 9.6 m frame.
     - Browser-verified: face reads (eyes, sigil, nose, mouth), hand, pulse → glow + scaffold + carvers, prompt + E →
       notice + saved; bell look, pulse → bands + hanging bell + 'drowned-bell' found.
+  - [x] M3d-3 Heart Key, Spire barrier, finale: `gameplay/finale.ts` `Finale` (`Game.finale`), three interactables:
+    take the Heart (`PROMPTS.takeHeartKey`, reach 2.8 → `HeartKey.take()` + `itemFound`); set it into the Spire gate
+    (holding it, within 4 m of `spire.gate` → `barrier.open()`, a `HeartKey.replica()` floats at the new
+    `spire.socket` under the lintel, new event `spireOpened`); touch the Stone (barrier open → `finaleStart`, close
+    shot over the explorer's shoulder, `setAwake` ramps over 2.8 s, then `EchoSystem.broadcast()` sends the world pulse
+    (`WORLD_PULSE` 60 m/s, r 900) and the camera rises behind the summit (`WIDE`); `endingStart` 10 s later → phase
+    `'ending'` (pointer lock released, world stays live). `Game.keepExploring()` (ending → playing, camera back) is
+    ready for the end screen.
+    - Pulse shapes: every slot carries speed + radius (`uEchoPulseShapes`, `PulseShape`, `PLAYER_PULSE`); world shader,
+      particles, shell, `PulseInfo` / `arrivalAt` / registry use them; the `pulse` event gained `speed` + `radius`;
+      faster pulses get a proportionally wider front band.
+    - Save: `spireOpen` (progression `SaveData`, sanitized, default false; `ProgressView.spireOpen`). Load: key taken,
+      barrier open + socketed Heart; completed → Stone awake 0.55, no touch prompt. `uiStore.cinematic` (Lane A block)
+      hides the HUD and objective during the finale. Audio: `spireOpened` → solved cue.
+    - Browser-verified: pickup, gate, Stone → finale → `'ending'`, save flags, reload restore, both shots (HUD hidden,
+      wavefront crossing the land under the revealed crown). Headless note: an instant `press e` can be lost during a
+      long shader-compile frame; press again.
 
 ## Next steps
 
-1. **Owner, 2026-10-31: there is no Chat B any more.** Chat A finishes Lane A, then continues Lane B from
-   `docs/lane-b.md` "Next steps" (M5a-2 pause tabs, M5a-3 end screen, M5b), then M6. B's files may be edited freely.
-2. **M3d world side** next (M3d-1 fragments + load spawn, M3d-2 secrets + Giant + Bell are done):
-   - M3d-3: Heart Key: interact at `World.undervault.key`
-     (`take()`, `PROMPTS.takeHeartKey`) → `itemFound`; barrier: holding the key within ~4 m of `World.spire.gate`
-     (`PROMPTS.placeHeartKey`) → `barrier.open()`; finale: `PROMPTS.touchStone` at `World.spire.stone` → `finaleStart`,
-     world-wide pulse, `spire.setAwake` ramp, then `endingStart`. Restore all of it on load (key taken, barrier open).
+1. **Lane A is complete** (M3a–M3d). Still untested from M1c (low risk): slope limit at the ridge, monolith
+   collider push, camera pull-in.
+2. **Owner, 2026-10-31: there is no Chat B any more.** Chat A continues Lane B from `docs/lane-b.md` "Next steps"
+   (B's files may be edited freely): **M5a-3 end screen first** (the finale now reaches phase `'ending'`, where the
+   HUD is empty), then M5a-2 pause tabs, M5b, then M6.
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -170,3 +185,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3d-1 | 2026-10-31 | Memory fragments (`gameplay/fragments.ts`, `FRAGMENT_SPOTS`): plinth + shard + beacon, pulse-only reveal, recovery → `fragmentFound`, restore on load; Continue spawns at the saved checkpoint. tsc clean, browser-verified. |
 | M3d-2a | 2026-10-31 | Secrets discovery for the Ghost Garden (stand in it) and Drowned Bell (pulse in the crater). Stopped at LOW budget (~$3.0 of $5 spent after M3d-1): Giant statue, bell mesh, Heart Key / barrier / finale left (see Next steps). No Chat B: Lane B work continues here afterwards. |
 | M3d-2b | 2026-10-31 | Sleeping Giant (`giant.ts`: carved head gazing up at the planet, hand, quarry, scaffold echo, ghost carvers, inspect while awake → secret), Drowned Bell (`bell.ts`: tilted bronze bell, fallen frame, ringing bands, hanging-bell echo), `PulseGlow`. tsc clean, browser-verified. |
+| M3d-3 | 2026-10-31 | Heart Key pickup, gate socket + barrier (`spireOpened`, saved `spireOpen`), Listening Stone finale (cinematic, world pulse via per-slot pulse shapes, `endingStart` → `'ending'`), restore on load, HUD hidden in cinematics, `Game.keepExploring()`. Lane A done. tsc clean, browser-verified. |

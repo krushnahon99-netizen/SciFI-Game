@@ -19,6 +19,8 @@ export interface ProgressView {
   readonly checkpoint: RegionId
   /** The ending was reached at least once; the world may stay "remembered" during free roam. */
   readonly completed: boolean
+  /** The Heart Key was set into the Listening Spire's gate: the barrier stays open. */
+  readonly spireOpen: boolean
 }
 
 /** Stand-in until progression.ts exists: nothing solved, nothing found. */
@@ -28,4 +30,5 @@ export const EMPTY_PROGRESS: ProgressView = {
   visited: () => false,
   checkpoint: 'cradle',
   completed: false,
+  spireOpen: false,
 }

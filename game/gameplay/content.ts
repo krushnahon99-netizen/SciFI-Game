@@ -256,7 +256,7 @@ export const OBJECTIVES: Record<ObjectiveId, ObjectiveText> = {
   },
   spire: {
     title: 'Climb the Listening Spire',
-    detail: 'The barrier answers to the Heart Key. Pulse at the Listening Stone on the summit.',
+    detail: 'The barrier answers to the Heart Key. Beyond it, touch the Listening Stone on the summit.',
   },
   free: {
     title: 'The world remembers',

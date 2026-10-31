@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { PULSE_RADIUS, PULSE_SLOTS, PULSE_SPEED } from '../echo/pulseShader'
+import { PULSE_SLOTS } from '../echo/pulseShader'
 import { sharedUniforms } from '../render/shaderChunks'
 import { TERRAIN_UV_SCALE } from './layout'
 import { mulberry32 } from './noise'
@@ -17,6 +17,7 @@ const VERTEX = /* glsl */ `
 uniform float uEchoTime;
 uniform float uEchoClock;
 uniform vec4 uEchoPulses[${PULSE_SLOTS}];
+uniform vec2 uEchoPulseShapes[${PULSE_SLOTS}];
 uniform sampler2D uTerrainSplat;
 uniform float uViewport;
 attribute float aRand;
@@ -41,11 +42,12 @@ void main() {
   float flare = 0.0;
   for (int i = 0; i < ${PULSE_SLOTS}; i++) {
     vec4 pulse = uEchoPulses[i];
+    vec2 shape = uEchoPulseShapes[i];
     float age = uEchoClock - pulse.w;
     vec3 away = world - pulse.xyz;
     float dist = length(away);
-    float x = dist - age * ${f(PULSE_SPEED)};
-    float life = 1.0 - smoothstep(0.45, 1.0, age * ${f(PULSE_SPEED / PULSE_RADIUS)});
+    float x = dist - age * shape.x;
+    float life = 1.0 - smoothstep(0.45, 1.0, age * shape.x / shape.y);
     flare += exp(-x * x * 0.05) * life;
     world += away / max(dist, 1e-3) * smoothstep(0.0, 8.0, -x) * life * 1.2;
   }
@@ -106,6 +108,7 @@ export class AmbientParticles {
         uEchoTime: sharedUniforms.uEchoTime,
         uEchoClock: sharedUniforms.uEchoClock,
         uEchoPulses: sharedUniforms.uEchoPulses,
+        uEchoPulseShapes: sharedUniforms.uEchoPulseShapes,
         uTerrainSplat: sharedUniforms.uTerrainSplat,
         uViewport: this.viewport,
       },

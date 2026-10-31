@@ -84,6 +84,7 @@ export class AudioEngine {
       events.on('fragmentFound', () => this.play((kit) => sfx.discovery(kit, 'fragment', this.tone))),
       events.on('secretFound', () => this.play((kit) => sfx.discovery(kit, 'secret', this.tone))),
       events.on('itemFound', () => this.play((kit) => sfx.discovery(kit, 'item', this.tone))),
+      events.on('spireOpened', () => this.play((kit) => sfx.solved(kit, REGION_TONES.spire, 1.2))),
       events.on('regionEnter', ({ id }) => this.setRegion(id)),
       events.on('respawn', ({ region }) => this.setRegion(region)),
       events.on('endingStart', () => this.play((kit) => sfx.solved(kit, REGION_TONES.spire, 1.6))),

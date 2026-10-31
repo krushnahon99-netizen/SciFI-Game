@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import type { Emitter, GameEvents } from '../core/events'
-import { PULSE_RADIUS, PULSE_SPEED } from './pulseShader'
 
 export type ReactiveKind = 'glyphs' | 'ghosts' | 'pastState' | 'crystals' | 'phase' | 'trigger'
 
@@ -9,6 +8,10 @@ export interface PulseInfo {
   readonly origin: THREE.Vector3
   /** Emission time on the EchoSystem play clock. */
   readonly time: number
+  /** Wavefront speed (m/s). */
+  readonly speed: number
+  /** The wavefront reaches nothing beyond this distance (m). */
+  readonly radius: number
 }
 
 /**
@@ -29,7 +32,7 @@ export interface Reactive {
 /** Play-clock time the wavefront reaches (x, y, z), or Infinity when the point lies beyond the pulse radius. */
 export function arrivalAt(pulse: PulseInfo, x: number, y: number, z: number): number {
   const distance = Math.hypot(x - pulse.origin.x, y - pulse.origin.y, z - pulse.origin.z)
-  return distance > PULSE_RADIUS ? Infinity : pulse.time + distance / PULSE_SPEED
+  return distance > pulse.radius ? Infinity : pulse.time + distance / pulse.speed
 }
 
 /** Fade-in / hold / fade-out envelope that later hits extend instead of restarting. */
@@ -80,8 +83,8 @@ export class ReactiveRegistry {
   private readonly unsubscribe: () => void
 
   constructor(private readonly events: Emitter<GameEvents>) {
-    this.unsubscribe = events.on('pulse', ({ origin, time }) =>
-      this.schedule({ origin: new THREE.Vector3(origin.x, origin.y, origin.z), time }),
+    this.unsubscribe = events.on('pulse', ({ origin, time, speed, radius }) =>
+      this.schedule({ origin: new THREE.Vector3(origin.x, origin.y, origin.z), time, speed, radius }),
     )
   }
 
@@ -118,8 +121,8 @@ export class ReactiveRegistry {
   private schedule(pulse: PulseInfo) {
     for (const item of this.items) {
       const gap = pulse.origin.distanceTo(item.center) - item.radius
-      if (gap > PULSE_RADIUS) continue
-      this.pending.push({ at: pulse.time + Math.max(0, gap) / PULSE_SPEED, item, pulse })
+      if (gap > pulse.radius) continue
+      this.pending.push({ at: pulse.time + Math.max(0, gap) / pulse.speed, item, pulse })
     }
     this.pending.sort((a, b) => a.at - b.at)
   }

@@ -30,6 +30,8 @@ interface SaveData {
   items: ItemId[]
   /** Wrong puzzle steps per puzzle; each one unlocks another journal hint. */
   fails: Partial<Record<PuzzleId, number>>
+  /** The Heart Key opened the Spire barrier (optional in older saves). */
+  spireOpen: boolean
   completed: boolean
   /** Seconds spent in the 'playing' phase. */
   playTime: number
@@ -99,6 +101,10 @@ export class Progression implements ProgressView {
       events.on('itemFound', ({ id }) => {
         if (addUnique(this.data.items, id)) this.record({ kind: 'item', id })
       }),
+      events.on('spireOpened', () => {
+        this.data.spireOpen = true
+        this.save()
+      }),
       events.on('pulse', () => this.countPulse()),
       events.on('endingStart', () => {
         this.data.completed = true
@@ -125,6 +131,10 @@ export class Progression implements ProgressView {
 
   get completed(): boolean {
     return this.data.completed
+  }
+
+  get spireOpen(): boolean {
+    return this.data.spireOpen
   }
 
   isSolved(id: PuzzleId): boolean {
@@ -256,6 +266,7 @@ function emptySave(): SaveData {
     secrets: [],
     items: [],
     fails: {},
+    spireOpen: false,
     completed: false,
     playTime: 0,
     pulses: 0,
@@ -280,6 +291,7 @@ function sanitize(raw: unknown): SaveData {
     const count = Math.floor(positive(fails[id]))
     if (count > 0) save.fails[id] = count
   }
+  save.spireOpen = source.spireOpen === true
   save.completed = source.completed === true
   save.playTime = positive(source.playTime)
   save.pulses = Math.floor(positive(source.pulses))

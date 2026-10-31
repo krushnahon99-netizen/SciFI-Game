@@ -11,8 +11,11 @@ export interface GameEvents {
   quality: { level: QualityLevel }
   pointerLock: { locked: boolean }
   lookMode: { mode: LookMode }
-  /** An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot. */
-  pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number }
+  /**
+   * An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot; `speed` (m/s)
+   * and `radius` (m) shape the wavefront (the explorer's pulse, or the finale's world pulse).
+   */
+  pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number; speed: number; radius: number }
   /** The wavefront reached a reactive object (echo/reactive.ts); `time` is the arrival on the play clock. */
   reactiveHit: { kind: ReactiveKind; position: { x: number; y: number; z: number }; time: number }
 
@@ -33,6 +36,8 @@ export interface GameEvents {
   fragmentFound: { id: FragmentId }
   secretFound: { id: SecretId }
   itemFound: { id: ItemId }
+  /** The Heart Key was set into the Listening Spire's gate and the barrier opened (saved; it stays open on load). */
+  spireOpened: Record<string, never>
   /** The player fell below `FALL_LIMIT` and was put back at the spawn point of `region` (the current one). */
   respawn: { region: RegionId }
   /** The finale pulse has finished; Game.ts switches to the 'ending' phase. */

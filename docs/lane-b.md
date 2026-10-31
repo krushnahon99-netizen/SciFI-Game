@@ -72,6 +72,9 @@ write access (as GitHub `tspencer164-5346` had, whose work went to its own repo 
 
 ## Next steps
 
+0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here.** Since M3d-3 the finale reaches phase
+   `'ending'` (HUD empty there), so do **M5a-3 first**: `Game.keepExploring()` already exists (ending → playing,
+   camera back, `uiStore.cinematic` false). Progression now also saves `spireOpen` (`spireOpened` event).
 1. After every pull, check coordination §7 for requests to B. (A answered everything in §6 / §7: plan AGREED.)
 2. **M5a** UI, in this order, saving after each part (M5a-1 title + intro is done):
    - M5a-2 pause menu tabs: journal (fragments, places, secrets, hints from `fails`) / settings / controls (`CONTROLS`),

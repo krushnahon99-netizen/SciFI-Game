@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { Emitter, GameEvents } from '../core/events'
 import { sharedUniforms } from '../render/shaderChunks'
 import { uiStore } from '../ui/store'
-import { PULSE_DURATION, PULSE_INACTIVE, PULSE_SLOTS, PULSE_SPEED } from './pulseShader'
+import { PLAYER_PULSE, PULSE_INACTIVE, PULSE_SLOTS, WORLD_PULSE, type PulseShape } from './pulseShader'
 
 /** Seconds between pulses. */
 export const PULSE_COOLDOWN = 2.5
@@ -60,6 +60,7 @@ export class EchoSystem {
   private nextSlot = 0
   private publishedSteps = -1
   private readonly pulses = sharedUniforms.uEchoPulses.value
+  private readonly shapes = sharedUniforms.uEchoPulseShapes.value
   private readonly shellGeometry = new THREE.SphereGeometry(1, 48, 24)
   private readonly shells: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>[] = []
 
@@ -68,6 +69,7 @@ export class EchoSystem {
     private readonly events: Emitter<GameEvents>,
   ) {
     for (const pulse of this.pulses) pulse.set(0, 0, 0, PULSE_INACTIVE)
+    for (const shape of this.shapes) shape.set(PLAYER_PULSE.speed, PLAYER_PULSE.radius)
     sharedUniforms.uEchoClock.value = 0
     for (let slot = 0; slot < PULSE_SLOTS; slot++) {
       const material = new THREE.ShaderMaterial({
@@ -105,16 +107,16 @@ export class EchoSystem {
     return 1 - this.cooldown / PULSE_COOLDOWN
   }
 
-  /** Sends a pulse from `origin` if charged; returns whether it fired. */
+  /** Sends the explorer's pulse from `origin` if charged; returns whether it fired. */
   trigger(origin: THREE.Vector3): boolean {
     if (this.cooldown > 0) return false
-    const slot = this.nextSlot
-    this.nextSlot = (slot + 1) % PULSE_SLOTS
-    this.pulses[slot].set(origin.x, origin.y, origin.z, this.clockSeconds)
-    this.cooldown = PULSE_COOLDOWN
-    this.publishCharge()
-    this.events.emit('pulse', { origin: { x: origin.x, y: origin.y, z: origin.z }, time: this.clockSeconds, slot })
+    this.fire(origin, PLAYER_PULSE)
     return true
+  }
+
+  /** A pulse that ignores the cooldown (and restarts it); by default the Listening Stone's world pulse. */
+  broadcast(origin: THREE.Vector3, shape: PulseShape = WORLD_PULSE) {
+    this.fire(origin, shape)
   }
 
   /** `dt` is play time: pass 0 while paused so pulses and the cooldown freeze. */
@@ -125,15 +127,17 @@ export class EchoSystem {
     for (let slot = 0; slot < PULSE_SLOTS; slot++) {
       const pulse = this.pulses[slot]
       const shell = this.shells[slot]
+      const shape = this.shapes[slot]
+      const duration = shape.y / shape.x
       const age = this.clockSeconds - pulse.w
       const life =
-        age < 0 || age > PULSE_DURATION
+        age < 0 || age > duration
           ? 0
-          : THREE.MathUtils.smoothstep(age, 0, 0.06) * (1 - THREE.MathUtils.smoothstep(age / PULSE_DURATION, 0.35, 1))
+          : THREE.MathUtils.smoothstep(age, 0, 0.06) * (1 - THREE.MathUtils.smoothstep(age / duration, 0.35, 1))
       shell.visible = life > 0.002
       if (!shell.visible) continue
       shell.position.set(pulse.x, pulse.y, pulse.z)
-      shell.scale.setScalar(Math.max(0.05, age * PULSE_SPEED))
+      shell.scale.setScalar(Math.max(0.05, age * shape.x))
       const uniforms = shell.material.uniforms
       uniforms.uOrigin.value.copy(shell.position)
       uniforms.uAge.value = age
@@ -150,6 +154,22 @@ export class EchoSystem {
     this.shells.length = 0
     this.shellGeometry.dispose()
     for (const pulse of this.pulses) pulse.set(0, 0, 0, PULSE_INACTIVE)
+  }
+
+  private fire(origin: THREE.Vector3, shape: PulseShape) {
+    const slot = this.nextSlot
+    this.nextSlot = (slot + 1) % PULSE_SLOTS
+    this.pulses[slot].set(origin.x, origin.y, origin.z, this.clockSeconds)
+    this.shapes[slot].set(shape.speed, shape.radius)
+    this.cooldown = PULSE_COOLDOWN
+    this.publishCharge()
+    this.events.emit('pulse', {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      time: this.clockSeconds,
+      slot,
+      speed: shape.speed,
+      radius: shape.radius,
+    })
   }
 
   private publishCharge() {

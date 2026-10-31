@@ -13,9 +13,10 @@ export function Hud() {
   const phase = useUI((state) => state.phase)
   const pointerLocked = useUI((state) => state.pointerLocked)
   const lookMode = useUI((state) => state.lookMode)
+  const cinematic = useUI((state) => state.cinematic)
 
   if (!booted) return null
-  const playing = phase === 'playing'
+  const playing = phase === 'playing' && !cinematic
   const showHint = playing && !pointerLocked
 
   return (

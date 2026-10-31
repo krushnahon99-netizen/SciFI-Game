@@ -103,6 +103,8 @@ export interface ListeningSpire {
   readonly stone: THREE.Vector3
   /** On the summit just outside the barrier's gate, where the ramp arrives (the Heart Key check measures from here). */
   readonly gate: THREE.Vector3
+  /** Under the gate's lintel: where the Heart Key floats once it has been set into the gate. */
+  readonly socket: THREE.Vector3
   readonly barrier: SpireBarrier
   /** Wakes the Stone's core and the crown over it, 0…1 (finale). */
   setAwake(level: number): void
@@ -164,9 +166,11 @@ export function buildSpire(context: StructureContext): ListeningSpire {
   buildSpireEchoes(context, top)
 
   const gatePoint = ringPoint(GATE_ANGLE, RING.radius + 1.8)
+  const socketPoint = ringPoint(GATE_ANGLE, RING.radius)
   return {
     stone,
     gate: new THREE.Vector3(gatePoint.x, top, gatePoint.z),
+    socket: new THREE.Vector3(socketPoint.x, top + RING.gateHeight - 1.15, socketPoint.z),
     barrier,
     setAwake(level) {
       const t = THREE.MathUtils.clamp(level, 0, 1)

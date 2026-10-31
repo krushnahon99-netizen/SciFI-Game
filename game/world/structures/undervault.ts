@@ -121,6 +121,15 @@ export class HeartKey {
     this.glow.value.w = GLOW_TAKEN
   }
 
+  /** A visible copy of the Heart (geometry and materials shared) at the origin, e.g. for the Spire gate's socket. */
+  replica(): THREE.Object3D {
+    const copy = this.root.clone()
+    copy.visible = true
+    copy.position.set(0, 0, 0)
+    copy.rotation.set(0, 0, 0)
+    return copy
+  }
+
   readonly update: Animator = (dt, time) => {
     if (this.held) return
     this.glow.value.w = GLOW_LIT * (1 + 0.06 * Math.sin(time * 1.3))

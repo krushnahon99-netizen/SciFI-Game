@@ -29,11 +29,12 @@ const TEXT_SHADOW = '[text-shadow:0_1px_8px_rgb(0_0_0/0.65)]'
 /** Top-left HUD column: the current objective, then discovery notices as they arrive. */
 export function ProgressHud() {
   const phase = useUI((state) => state.phase)
+  const cinematic = useUI((state) => state.cinematic)
   const objective = useUI((state) => state.progress?.objective ?? null)
   const notices = useUI((state) => state.notices)
 
   // Unmounting while paused stops the notice timers, so nothing expires unseen behind the menu.
-  if (phase !== 'playing') return null
+  if (phase !== 'playing' || cinematic) return null
 
   return (
     <div className="absolute left-[max(1rem,env(safe-area-inset-left))] top-[max(1rem,env(safe-area-inset-top))] flex w-[min(21rem,calc(100vw-9.5rem))] flex-col gap-3">
