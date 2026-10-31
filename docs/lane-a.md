@@ -123,18 +123,30 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
   - [x] M3d-2a Secrets discovery (partial): `gameplay/secrets.ts` `Secrets` (`Game.secrets`, `update(reach)` after
     interactables; `pulse` listener disposed in `Game.dispose`). Ghost Garden = stand within 7 m of `GHOST_GARDEN`;
     Drowned Bell = pulse origin within 0.75 × crater radius → `secretFound` (progression notice + save); found ones
-    skipped via `progress.has`. Browser-verified both (+ notices). Sleeping Giant: no trigger yet (statue not built).
+    skipped via `progress.has`. Browser-verified both (+ notices).
+  - [x] M3d-2b Sleeping Giant + Drowned Bell meshes:
+    - `echo/glow.ts` `PulseGlow` (reactive kind `'trigger'`): emissive materials flare when the wavefront arrives
+      (`RevealTimer` envelope, `amount` 0..1 for gameplay).
+    - `world/structures/giant.ts` `buildSleepingGiant()` returns `SleepingGiant { face (inspect point on the sand),
+      awake (0..1) }`, kept as `World.giant`. Giant-local +z = the planet's bearing (`YAW`). Head = displaced
+      160×120 sphere (`headPoint()`: ellipsoid + face relief; the back of the skull is stepped "unfinished" quarry
+      cuts), tipped back chin-first out of the sand gazing up at the planet; closed eyes with glowing lid seams +
+      brow sigil (`PulseGlow`, 14 s hold); a shoulder mound; forearm + hand rising toward the planet (palm, 2 carved
+      fingers, thumb, the last two fingers still one uncut block); 5 quarry blocks; colliders for all. Echoes: scaffold
+      + crane hologram (`PastStateOverlay`), 4 ghost carvers (one sings to it).
+    - `gameplay/secrets.ts`: an `Interactable` at `giant.face` (reach 5, `PROMPTS.inspect` only while `awake` > 0.3)
+      → `secretFound` 'sleeping-giant'. `Secrets` now takes `(events, progress, giant, interactables)`.
+    - `world/structures/bell.ts` `buildDrownedBell()`: bronze lathe bell (closed profile, DoubleSide metal) tilted and
+      half-sunk at the crater bottom, 2 glowing glyph bands (`PulseGlow`: quick flare, 6 s ring-out), fallen stone frame
+      (snapped post, stub, broken top, crossbeam pieces; colliders). Echo: the bell hanging in its intact 9.6 m frame.
+    - Browser-verified: face reads (eyes, sigil, nose, mouth), hand, pulse → glow + scaffold + carvers, prompt + E →
+      notice + saved; bell look, pulse → bands + hanging bell + 'drowned-bell' found.
 
 ## Next steps
 
 1. **Owner, 2026-10-31: there is no Chat B any more.** Chat A finishes Lane A, then continues Lane B from
    `docs/lane-b.md` "Next steps" (M5a-2 pause tabs, M5a-3 end screen, M5b), then M6. B's files may be edited freely.
-2. **M3d world side** next (M3d-1 fragments + load spawn and M3d-2a secrets discovery are done):
-   - M3d-2b: the **Sleeping Giant** is NOT built (only a scatter clearing, r 18, at layout `SLEEPING_GIANT`): build the
-     buried colossal figure facing the ringed planet (new `world/structures/giant.ts`), a pulse reveals it (reactive),
-     then interact → add `'sleeping-giant'` to `gameplay/secrets.ts` `Secrets` (it has no trigger yet). The **Drowned
-     Bell** mesh is also missing (crater only, terrain.ts): add a great bell at the crater bottom; its discovery
-     (pulse inside the crater) already works.
+2. **M3d world side** next (M3d-1 fragments + load spawn, M3d-2 secrets + Giant + Bell are done):
    - M3d-3: Heart Key: interact at `World.undervault.key`
      (`take()`, `PROMPTS.takeHeartKey`) → `itemFound`; barrier: holding the key within ~4 m of `World.spire.gate`
      (`PROMPTS.placeHeartKey`) → `barrier.open()`; finale: `PROMPTS.touchStone` at `World.spire.stone` → `finaleStart`,
@@ -157,3 +169,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3c | 2026-10-31 | Interactables + HUD prompt, Choir Sequence (ghost replay, attune, gate), Glass Bridge (crossing → stable), Dormant Grid (timed node charges → door), `phaseWarn`, restore on load. tsc clean, browser-verified. Owner: no Chat B any more; A continues Lane B afterwards. |
 | M3d-1 | 2026-10-31 | Memory fragments (`gameplay/fragments.ts`, `FRAGMENT_SPOTS`): plinth + shard + beacon, pulse-only reveal, recovery → `fragmentFound`, restore on load; Continue spawns at the saved checkpoint. tsc clean, browser-verified. |
 | M3d-2a | 2026-10-31 | Secrets discovery for the Ghost Garden (stand in it) and Drowned Bell (pulse in the crater). Stopped at LOW budget (~$3.0 of $5 spent after M3d-1): Giant statue, bell mesh, Heart Key / barrier / finale left (see Next steps). No Chat B: Lane B work continues here afterwards. |
+| M3d-2b | 2026-10-31 | Sleeping Giant (`giant.ts`: carved head gazing up at the planet, hand, quarry, scaffold echo, ghost carvers, inspect while awake → secret), Drowned Bell (`bell.ts`: tilted bronze bell, fallen frame, ringing bands, hanging-bell echo), `PulseGlow`. tsc clean, browser-verified. |

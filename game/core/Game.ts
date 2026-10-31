@@ -120,7 +120,7 @@ export class Game {
       this.events,
       this.progression,
     )
-    this.secrets = new Secrets(this.events, this.progression)
+    this.secrets = new Secrets(this.events, this.progression, this.world.giant, this.interactables)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
