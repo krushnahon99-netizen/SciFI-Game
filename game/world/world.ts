@@ -13,6 +13,7 @@ import { buildBridge, type GlassBridge } from './structures/bridge'
 import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
 import { buildHall, type Hall } from './structures/hall'
+import { buildSpire, type ListeningSpire } from './structures/spire'
 import { buildUndervault, type Undervault } from './structures/undervault'
 import { buildVale } from './structures/vale'
 import { buildWorks, type ConduitWorks } from './structures/works'
@@ -38,6 +39,8 @@ export class World {
   readonly works: ConduitWorks
   /** Undervault handles (the Heart Key on its shrine) for the pickup. */
   readonly undervault: Undervault
+  /** Listening Spire handles (barrier, gate point, Listening Stone) for the Heart Key and the finale. */
+  readonly spire: ListeningSpire
 
   private readonly scatter: Scatter
   private readonly particles: AmbientParticles
@@ -88,6 +91,7 @@ export class World {
     this.bridge = buildBridge(context)
     this.works = buildWorks(context)
     this.undervault = buildUndervault(context)
+    this.spire = buildSpire(context)
     this.scatter = new Scatter(this.terrain, this.collision)
     this.particles = new AmbientParticles()
     scene.add(this.scatter.root, this.particles.points)

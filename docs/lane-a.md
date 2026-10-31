@@ -34,7 +34,7 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     WAAPI fade (opacity only with reduced motion), `role="status"`. Name + subtitle come from B's `REGIONS`
     (`gameplay/content.ts`).
   - Browser-verified: Cradle title at start, Hall title on teleport, a gap keeps Hall, then Vale (log `hall, vale`).
-- [ ] M3b Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates
+- [x] M3b Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates
   - [x] M3b-1 Glass Bridge chasm: `world/structures/bridge.ts` `buildBridge()` returns `GlassBridge { planks (10
     `PhaseObject`s, west → east), west, east (pier-tip x), stable, stabilize() }`, kept as `World.bridge` for M3c.
     `findRim()` marches the heightmap to the cliff edge; per rim an octagonal dais, a gate block with two glyph pylons
@@ -72,14 +72,28 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     slide, which fixed the player sticking at the door sill. Undervault spawn moved onto the landing; the r 9 region
     circle already fits inside the walls. Partial edits recovered from two auto-commits (`d7ac0ed`, `0b1f7c4`).
     Browser-verified: stair down/up, shrine readable, walk out through the open door onto the hub without sticking.
+  - [x] M3b-4 Listening Spire: `world/structures/spire.ts` `buildSpire()` returns `ListeningSpire { stone (top centre
+    of the Listening Stone), gate (summit point just outside the barrier gate, where the ramp arrives), barrier:
+    SpireBarrier (isOpen, open(instant?): colliders off at once, curtain dissolves in 3.2 s), setAwake(0..1) (Stone
+    core + crown glow, for the finale) }`, kept as `World.spire`. Summit (flat y 45): two tiers with inlays, the Stone
+    (octagonal pedestal, floating core + 2 rings), 3 vanes leaning in (one snapped) under a floating crown at +26.5 m,
+    a ring of 12 pylons at r 10.5 (taller gate pair + lintel with the Heart sigil facing `SPIRE.ramp.end`) holding 12
+    additive gold curtain panels (own ShaderMaterial, one box collider each). Ramp: 7 waystones on the outer edge, a
+    ruined gate at the foot. Echoes: whole Spire (`PastStateOverlay`: 6 vanes, needle, 3 crown rings), `GhostScene`
+    (2 climbing the last stretch, 1 kneeling at the Stone, 2 singing), 2 crystal clusters. A ring (not a gate across
+    the ramp) because the ramp's last metres can be left sideways onto the plateau. Gates overall: Hall north gate
+    (M3a-2), vault door (M3b-2), Spire barrier (here) — all built, all closed until M3c/M3d open them.
+    Browser-verified: closed barrier stops the player at r 10.7; after `open()` the player walks through the gate, up
+    both tiers to the Stone; summit and far silhouette readable. Dev: `__echo.world.spire.barrier.open()`.
 - [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
 - [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
 
 ## Next steps
 
 1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3b structures (M3b-1 Glass Bridge, M3b-2 Conduit Works, M3b-3 Undervault are done): **M3b-4 Listening Spire**
-   next (ramp top, energy barrier that the Heart Key opens), then the remaining gates.
+2. M3b is complete (Glass Bridge, Conduit Works, Undervault, Listening Spire, gates). **M3c puzzles** next.
+   M3d hooks already in place: Heart Key `World.undervault.key` (`take()`), barrier `World.spire.barrier.open()` when
+   the player holds the key within ~4 m of `World.spire.gate`, finale at `World.spire.stone` (`setAwake`).
 3. M3c: the Glass Bridge puzzle only needs `World.bridge` (crossing while solid → `stabilize()` + `puzzleSolved`).
    Dormant Grid: on each `pulse`, charge `World.works.nodes` within range of the origin (~12 m), decay over ~15 s,
    all three charged → `works.setPower(1)` + `works.door.open()` + `puzzleSolved`; on load `door.open(true)`.
@@ -97,3 +111,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3b-1 | 2026-10-31 | Recovered the Glass Bridge from orphan `d402724` and merged it with B's M4/M5a-1 (Game.ts: kept B's avatar line + A's fall check; `respawn` event). tsc clean, browser-verified. |
 | M3b-2 | 2026-10-31 | Chat UZLjCTVV9He ran out of credits mid-step (partial edits auto-committed as `553768f`, off `main`). Next chat: wrote `works.ts` (hub, grid nodes, towers, tanks, vault house + sinking door, echoes), `World.works`, toned down metal rust. tsc clean, browser-verified. |
 | M3b-3 | 2026-10-31 | Two chats (uyj6eVOtBnp, Y2KvllYEyFb) ran out mid-step; their auto-commits `d7ac0ed` + `0b1f7c4` held the whole Undervault (chamber, Heart Key, terrain hole, chamber glow, step-up + `onCollider` physics). Next chat verified the door walk-out fix and saved it. tsc clean, browser-verified. |
+| M3b-4 | 2026-10-31 | Listening Spire summit (Stone, vanes, crown, barrier ring with Heart gate), ramp waystones + foot gate, echoes; `World.spire`. M3b done. tsc clean, browser-verified. |
