@@ -5,6 +5,7 @@ import { ReactiveRegistry } from '../echo/reactive'
 import { Fragments } from '../gameplay/fragments'
 import type { RegionId } from '../gameplay/ids'
 import { Interactables } from '../gameplay/interactables'
+import { Secrets } from '../gameplay/secrets'
 import { Intro, titleShot } from '../gameplay/intro'
 import { Progression } from '../gameplay/progression'
 import { Puzzles } from '../gameplay/puzzles'
@@ -55,6 +56,7 @@ export class Game {
   readonly puzzles: Puzzles
   /** The ten memory fragments; recovered ones (from `progression`) stay hidden. */
   readonly fragments: Fragments
+  readonly secrets: Secrets
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -118,6 +120,7 @@ export class Game {
       this.events,
       this.progression,
     )
+    this.secrets = new Secrets(this.events, this.progression)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -232,6 +235,7 @@ export class Game {
     this.echo.dispose()
     this.reactives.dispose()
     this.puzzles.dispose()
+    this.secrets.dispose()
     this.interactables.dispose()
     this.world.dispose()
     disposeObject3D(this.scene)
@@ -332,6 +336,7 @@ export class Game {
     this.fragments.update(this.echo.clock, live ? dt : 0, this.time)
     const reach = playing && !this.spectator && !this.cameraRig.inCinematic ? this.player.position : null
     this.interactables.update(reach, reach !== null && this.input.wasPressed('interact'))
+    this.secrets.update(reach)
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
     this.audio.update(dt, this.camera)

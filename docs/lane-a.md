@@ -120,14 +120,22 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     Load spawn: `Game.continueJourney()` → `placeAt(progression.checkpoint)` (shared with `respawn()`).
     Browser-verified: look on Low, prompt + recovery + notice + save, f02 hidden → pulse → prompt, reload + Continue
     → Vale spawn with f01 still recovered.
+  - [x] M3d-2a Secrets discovery (partial): `gameplay/secrets.ts` `Secrets` (`Game.secrets`, `update(reach)` after
+    interactables; `pulse` listener disposed in `Game.dispose`). Ghost Garden = stand within 7 m of `GHOST_GARDEN`;
+    Drowned Bell = pulse origin within 0.75 × crater radius → `secretFound` (progression notice + save); found ones
+    skipped via `progress.has`. Browser-verified both (+ notices). Sleeping Giant: no trigger yet (statue not built).
 
 ## Next steps
 
 1. **Owner, 2026-10-31: there is no Chat B any more.** Chat A finishes Lane A, then continues Lane B from
    `docs/lane-b.md` "Next steps" (M5a-2 pause tabs, M5a-3 end screen, M5b), then M6. B's files may be edited freely.
-2. **M3d world side** next (M3d-1 fragments + load spawn is done):
-   - M3d-2: secrets (Ghost Garden: reach the top phase stone; Sleeping Giant: buried statue a pulse reveals, then
-     interact; Drowned Bell: pulse inside the crater) → `secretFound`; Heart Key: interact at `World.undervault.key`
+2. **M3d world side** next (M3d-1 fragments + load spawn and M3d-2a secrets discovery are done):
+   - M3d-2b: the **Sleeping Giant** is NOT built (only a scatter clearing, r 18, at layout `SLEEPING_GIANT`): build the
+     buried colossal figure facing the ringed planet (new `world/structures/giant.ts`), a pulse reveals it (reactive),
+     then interact → add `'sleeping-giant'` to `gameplay/secrets.ts` `Secrets` (it has no trigger yet). The **Drowned
+     Bell** mesh is also missing (crater only, terrain.ts): add a great bell at the crater bottom; its discovery
+     (pulse inside the crater) already works.
+   - M3d-3: Heart Key: interact at `World.undervault.key`
      (`take()`, `PROMPTS.takeHeartKey`) → `itemFound`; barrier: holding the key within ~4 m of `World.spire.gate`
      (`PROMPTS.placeHeartKey`) → `barrier.open()`; finale: `PROMPTS.touchStone` at `World.spire.stone` → `finaleStart`,
      world-wide pulse, `spire.setAwake` ramp, then `endingStart`. Restore all of it on load (key taken, barrier open).
@@ -148,3 +156,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3b-4 | 2026-10-31 | Listening Spire summit (Stone, vanes, crown, barrier ring with Heart gate), ramp waystones + foot gate, echoes; `World.spire`. M3b done. tsc clean, browser-verified. |
 | M3c | 2026-10-31 | Interactables + HUD prompt, Choir Sequence (ghost replay, attune, gate), Glass Bridge (crossing → stable), Dormant Grid (timed node charges → door), `phaseWarn`, restore on load. tsc clean, browser-verified. Owner: no Chat B any more; A continues Lane B afterwards. |
 | M3d-1 | 2026-10-31 | Memory fragments (`gameplay/fragments.ts`, `FRAGMENT_SPOTS`): plinth + shard + beacon, pulse-only reveal, recovery → `fragmentFound`, restore on load; Continue spawns at the saved checkpoint. tsc clean, browser-verified. |
+| M3d-2a | 2026-10-31 | Secrets discovery for the Ghost Garden (stand in it) and Drowned Bell (pulse in the crater). Stopped at LOW budget (~$3.0 of $5 spent after M3d-1): Giant statue, bell mesh, Heart Key / barrier / finale left (see Next steps). No Chat B: Lane B work continues here afterwards. |
