@@ -1,6 +1,8 @@
 'use client'
 
 import { QUALITY_PRESETS } from '@/game/render/quality'
+import { cn } from '@/lib/utils'
+import { useTouchMode } from './use-touch-mode'
 import { useUI } from './use-ui'
 
 function formatCount(value: number): string {
@@ -14,6 +16,8 @@ export function PerfOverlay() {
   const showPerf = useUI((state) => state.showPerf)
   const perf = useUI((state) => state.perf)
   const quality = useUI((state) => state.quality)
+  // The touch Menu button owns the top-right corner.
+  const touch = useTouchMode()
 
   const rows: Array<[string, string]> = [
     ['FPS', String(perf.fps)],
@@ -28,7 +32,15 @@ export function PerfOverlay() {
   ]
 
   return (
-    <div className="absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[max(0.75rem,env(safe-area-inset-top))] rounded-md border border-border bg-background/55 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground/85 tabular-nums backdrop-blur-sm">
+    <div
+      className={cn(
+        'absolute top-[max(0.75rem,env(safe-area-inset-top))]',
+        touch
+          ? 'right-[calc(max(0.75rem,env(safe-area-inset-right))_+_3.25rem)]'
+          : 'right-[max(0.75rem,env(safe-area-inset-right))]',
+      )}
+    >
+    <div className="rounded-md border border-border bg-background/55 px-2.5 py-1.5 font-mono text-[0.68rem] leading-relaxed text-foreground/85 tabular-nums backdrop-blur-sm">
       {showPerf ? (
         <div className="flex flex-col gap-1">
           <dl className="grid grid-cols-[auto_auto] gap-x-4">
@@ -48,6 +60,7 @@ export function PerfOverlay() {
           {perf.fps} <span className="text-muted-foreground">FPS</span>
         </p>
       )}
+    </div>
     </div>
   )
 }

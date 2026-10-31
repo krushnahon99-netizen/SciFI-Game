@@ -84,6 +84,8 @@ export class Input {
   private readonly virtualMove = { x: 0, y: 0 }
   private readonly moveAxis = { x: 0, y: 0 }
   private lockEverSucceeded = false
+  /** The last press anywhere on the page was a finger: menus tapped on a touch screen must not capture the mouse. */
+  private lastPressWasTouch = false
   private drag: DragState | null = null
 
   constructor(
@@ -91,6 +93,7 @@ export class Input {
     private readonly events: Emitter<GameEvents>,
   ) {
     this.lookMode = typeof element.requestPointerLock === 'function' ? 'pointer-lock' : 'drag'
+    window.addEventListener('pointerdown', this.onAnyPointerDown, { capture: true, passive: true })
     window.addEventListener('keydown', this.onKeyDown)
     window.addEventListener('keyup', this.onKeyUp)
     window.addEventListener('blur', this.releaseAll)
@@ -163,7 +166,7 @@ export class Input {
   // --- Pointer lock -------------------------------------------------------------------------
 
   requestPointerLock() {
-    if (this.lookMode !== 'pointer-lock' || this.pointerLocked) return
+    if (this.lookMode !== 'pointer-lock' || this.pointerLocked || this.lastPressWasTouch) return
     try {
       const result: unknown = this.element.requestPointerLock()
       if (result instanceof Promise) result.catch(this.onLockError)
@@ -186,6 +189,7 @@ export class Input {
 
   dispose() {
     this.exitPointerLock()
+    window.removeEventListener('pointerdown', this.onAnyPointerDown, { capture: true })
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
     window.removeEventListener('blur', this.releaseAll)
@@ -202,6 +206,10 @@ export class Input {
   }
 
   // --- DOM handlers ---------------------------------------------------------------------------
+
+  private readonly onAnyPointerDown = (event: PointerEvent) => {
+    this.lastPressWasTouch = event.pointerType === 'touch'
+  }
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey || isEditable(event.target)) return

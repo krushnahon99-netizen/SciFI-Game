@@ -10,7 +10,7 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
 - [x] M4 Procedural audio (`audio/*.ts`), volume + mute, A's four audio hooks
 - [x] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
       (M5a-1 by Chat B; M5a-3 and M5a-2 by Chat A)
-- [ ] M5b Touch controls, perf overlay, auto-quality
+- [ ] M5b Touch controls, perf overlay, auto-quality (M5b-1 touch controls done; next M5b-2)
 - [ ] M6 prep (README checklist, known limitations)
 
 ## As built (read before touching Lane B code)
@@ -19,7 +19,7 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   journal), `FRAGMENTS` (region, title, speaker, text, `pulseOnly`: f02 f04 f06 f07 f09), `SECRETS`, `ITEMS`,
   `PUZZLES` (name, solved line, 3 hints), `OBJECTIVES` + `ObjectiveId`, `PROMPTS` (for A's `interactPrompt`),
   `NOTICE_TEXT`, `INTRO`, `TITLE_SCREEN`, `PAUSE`, `JOURNAL`, `SETTINGS_TEXT`, `CONTROLS` (keyboard + touch),
-  `ENDING`; runtime ID lists `REGION_IDS` … `PUZZLE_IDS`.
+  `TOUCH` (touch button names), `ENDING`; runtime ID lists `REGION_IDS` … `PUZZLE_IDS`.
 - `gameplay/progression.ts` `Progression` (`Game.progression`, created before `World`): records A's events; save key
   `echo.save.v1` (version 1, sanitised on load, unknown IDs dropped). Saves on every discovery, every 20 s of play,
   on pause / ending, `pagehide` and tab hide. `fails` per puzzle (wrong `puzzleStep`) unlocks journal hints.
@@ -78,6 +78,19 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   in `uiStore.menuTab` (default journal); `J` (`Game.toggleJournal()`, debounced like Esc): playing → pause on the
   journal; paused on another tab → journal; paused on the journal → resume. Title screen: Settings / Controls buttons
   open the same panels in a card with Back (`TITLE_SCREEN.back`).
+- **Touch controls** (M5b-1). `components/echo/use-touch-mode.ts` `useTouchMode()`: true on `(pointer: coarse)` or
+  after the first finger touch on the page (touch-screen laptops). `touch-controls.tsx` (z-20, only in `'playing'`
+  without `cinematic`): floating joystick on the left half (`Stick`: base appears under the thumb, knob travel 48 px,
+  dead zone 0.12, analog `input.setVirtualMove()`, ≥ 0.9 holds `run`), `LookPad` on the right half (`input.addLook()`
+  × 1.6), `PadButton`s acting on pointer-down with capture (Jump holds `jump`, Pulse taps `pulse` with the `PulseRing`
+  charge ring as its face + a 12 ms vibrate when ready, Interact taps `interact` only while `interactPrompt`), Menu
+  button top-right → `Game.pause()`. Unmounting (pause, cinematic) releases every held input (source `'touch'`). In
+  touch mode the HUD hides the keyboard hint and the centre `PulseIndicator`, `InteractPrompt` shows a hand instead of
+  E, and the FPS chip moves left of the Menu button. `input.ts`: `requestPointerLock()` is skipped when the last
+  pointer-down on the page was a finger (menus tapped on a phone never try to capture the mouse).
+  Testing: agent-browser's `set device` gives no coarse pointer; `window.dispatchEvent(new PointerEvent('pointerdown',
+  { pointerType: 'touch' }))` switches the UI to touch mode, and synthetic touch `PointerEvent`s on the zones /
+  buttons drive it. Its real clicks land offset under device emulation (use `element.click()` for small buttons).
 
 ## Save path
 
@@ -92,11 +105,10 @@ write access (as GitHub `tspencer164-5346` had, whose work went to its own repo 
 ## Next steps
 
 0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here.** M5a is complete.
-1. **M5b** next, saving after each part: (a) touch controls: `components/echo/touch-controls.tsx` driving the
-   `input.ts` virtual API (left joystick, drag-look on the right, Pulse / Jump / Interact (only while
-   `interactPrompt`) / Menu buttons, as listed in `CONTROLS.touch`), shown on coarse pointers only; (b) auto-quality
-   (`SETTINGS_TEXT.auto` exists; step the preset down on sustained low FPS unless the player picked one); (c) perf
-   overlay polish.
+1. **M5b-2** next: (b) auto-quality (`SETTINGS_TEXT.auto` exists; step the preset down on sustained low FPS unless the
+   player picked one; an Auto choice in `SettingsPanel`) and (c) perf overlay polish (FPS is computed from the capped
+   dt in `Game.samplePerf`, so it overstates FPS below 10; the FPS chip also shows on the title screen). M5b-1 (touch
+   controls) is done.
 2. Then M6 (README checklist, known limitations; fold lane files back into AGENTS.md, end parallel mode).
 4. Not testable yet: footsteps / land / puzzle / discovery cues fire only once Lane A emits those events (M3c / M3d);
    the M4 check fired them by hand through `__echo.events.emit(...)`.
@@ -115,3 +127,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M5a-1 | 2026-10-30 | Title phase over the live world (Continue / Begin / New journey + confirm → remount into the intro), letterboxed skippable intro (`gameplay/intro.ts`: lines, descent to the explorer, first pulse). Game.ts: `start({ intro })`, `continueJourney` / `beginJourney` / `skipIntro`, world live during `'intro'`. tsc clean; browser-verified at 432×632 (title, remount, lines, descent, pulse → `'playing'` in the Cradle, Esc skip). |
 | M5a-3 | 2026-10-31 | Chat A (no Chat B any more): end screen (`end-screen.tsx`: staged reveal, stats, inert-until-visible buttons), `Game.returnToTitle()`, `Finale.running`, shared `menu.ts`. tsc clean; browser-verified at 1280×800 (finale → ending, Return to title → Continue, Keep exploring → playing). |
 | M5a-2 | 2026-10-31 | Chat A: pause menu tabs (`menu-panels.tsx`: journal / settings / controls), Return to title, `J` journal toggle (`uiStore.menuTab`), title Settings / Controls panels. M5a complete. tsc clean; browser-verified (journal hints + entries, tabs, J open / switch / resume, title settings at 432×632). |
+| M5b-1 | 2026-10-31 | Lane B by a single chat (no Chat A / B split any more): touch controls (`touch-controls.tsx`: floating joystick with run at full tilt, look pad, Pulse / Jump / Interact / Menu), `useTouchMode()`, touch-aware HUD, no pointer lock after a touch. tsc clean; browser-verified at 390×844 (layout, move axis, run, look delta, jump hold, pulse, Menu → pause). |

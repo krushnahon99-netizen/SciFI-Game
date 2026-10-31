@@ -10,6 +10,7 @@ import { Hud } from './hud'
 import { IntroOverlay } from './intro-overlay'
 import { PauseMenu } from './pause-menu'
 import { TitleScreen } from './title-screen'
+import { TouchControls } from './touch-controls'
 
 function describeStartupError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
@@ -68,6 +69,7 @@ export function EchoGame() {
           aria-label="ECHO game view. Click to capture the mouse, then use W A S D to move."
         />
         <Hud />
+        <TouchControls />
         <TitleScreen onNewJourney={newJourney} />
         <IntroOverlay />
         <EndScreen />

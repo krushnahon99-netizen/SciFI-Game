@@ -337,6 +337,15 @@ export const SETTINGS_TEXT = {
   auto: 'Auto',
 } as const
 
+/** On-screen touch controls (accessible names). */
+export const TOUCH = {
+  controls: 'Touch controls',
+  pulse: 'Echo pulse',
+  jump: 'Jump',
+  interact: 'Interact',
+  menu: 'Menu',
+} as const
+
 export const CONTROL_GROUPS = {
   keyboard: 'Keyboard and mouse',
   touch: 'Touch',
