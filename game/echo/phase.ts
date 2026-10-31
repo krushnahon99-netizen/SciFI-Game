@@ -91,6 +91,9 @@ export class PhaseObject implements Reactive {
   private readonly timer = new RevealTimer(PHASE_HOLD, 0.35, 0.45)
   private stable = false
   private solid = false
+  private warned = false
+  /** Set by the ReactiveRegistry (emits `phaseWarn`); called each time the expiry flicker starts. */
+  onWarn: ((center: THREE.Vector3) => void) | null = null
 
   constructor(scene: THREE.Scene, collision: Collision, parts: readonly PhasePart[], name = 'echo.phase') {
     for (const part of parts) {
@@ -138,6 +141,10 @@ export class PhaseObject implements Reactive {
     if (this.stable) return false
     const left = this.timer.until - clock
     const warning = left > 0 && left < PHASE_WARNING
+    if (warning !== this.warned) {
+      this.warned = warning
+      if (warning) this.onWarn?.(this.center)
+    }
     const flicker = warning && Math.sin(clock * (14 + (PHASE_WARNING - left) * 16)) < -0.3 ? 0.25 : 1
     const done = this.timer.done(clock)
     const phase = done ? 0 : this.timer.amount(clock) * flicker

@@ -122,7 +122,7 @@ export class GhostScene implements Reactive {
   private readonly material = createHologramMaterial()
   private readonly geometry = createGhostGeometry()
   private readonly actors: ActorState[] = []
-  private readonly timer = new RevealTimer(HOLD, FADE_IN, FADE_OUT)
+  private readonly timer: RevealTimer
   private fresh = false
   private readonly point = { x: 0, z: 0 }
   private readonly ahead = { x: 0, z: 0 }
@@ -132,7 +132,10 @@ export class GhostScene implements Reactive {
     actors: readonly GhostActor[],
     private readonly heightAt: (x: number, z: number) => number,
     name = 'echo.ghosts',
+    /** Envelope override, e.g. the Choir's short-lived singers (gameplay/puzzles.ts drives those itself). */
+    timing: { hold?: number; fadeIn?: number; fadeOut?: number } = {},
   ) {
+    this.timer = new RevealTimer(timing.hold ?? HOLD, timing.fadeIn ?? FADE_IN, timing.fadeOut ?? FADE_OUT)
     let minX = Infinity
     let maxX = -Infinity
     let minZ = Infinity

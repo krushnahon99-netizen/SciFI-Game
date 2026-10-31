@@ -1,6 +1,7 @@
 'use client'
 
 import { AudioIndicator } from './audio-indicator'
+import { InteractPrompt } from './interact-prompt'
 import { PerfOverlay } from './perf-overlay'
 import { ProgressHud } from './progress-hud'
 import { PulseIndicator } from './pulse-indicator'
@@ -23,6 +24,7 @@ export function Hud() {
       <ProgressHud />
       <RegionTitle />
       <div className="absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center gap-3 px-4">
+        {playing && <InteractPrompt />}
         {playing && <PulseIndicator />}
         {playing && <AudioIndicator />}
         {showHint && (

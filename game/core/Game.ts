@@ -2,8 +2,10 @@ import * as THREE from 'three'
 import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { Interactables } from '../gameplay/interactables'
 import { Intro, titleShot } from '../gameplay/intro'
 import { Progression } from '../gameplay/progression'
+import { Puzzles } from '../gameplay/puzzles'
 import { RegionTracker } from '../gameplay/regions'
 import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
@@ -45,6 +47,10 @@ export class Game {
   /** Procedural audio (lane B); its AudioContext starts on the first user gesture. */
   readonly audio: AudioEngine
   readonly regions: RegionTracker
+  /** E-to-use objects near the explorer; publishes `uiStore.interactPrompt`. */
+  readonly interactables = new Interactables()
+  /** Choir Sequence, Glass Bridge, Dormant Grid; solved state is restored from `progression` when built. */
+  readonly puzzles: Puzzles
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -99,6 +105,7 @@ export class Game {
     this.cameraRig.update(0, this.player.position)
     this.echo = new EchoSystem(this.scene, this.events)
     this.regions = new RegionTracker(this.events)
+    this.puzzles = new Puzzles(this.scene, this.world, this.events, this.progression, this.interactables)
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -211,6 +218,8 @@ export class Game {
     this.avatar.dispose()
     this.echo.dispose()
     this.reactives.dispose()
+    this.puzzles.dispose()
+    this.interactables.dispose()
     this.world.dispose()
     disposeObject3D(this.scene)
     this.renderSystem.dispose()
@@ -306,6 +315,9 @@ export class Game {
       this.cameraRig.update(dt, this.player.position)
       if (playing) this.regions.update(this.player.position)
     }
+    this.puzzles.update(this.echo.clock, live ? dt : 0, this.player.position)
+    const reach = playing && !this.spectator && !this.cameraRig.inCinematic ? this.player.position : null
+    this.interactables.update(reach, reach !== null && this.input.wasPressed('interact'))
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
     this.audio.update(dt, this.camera)

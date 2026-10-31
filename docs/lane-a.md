@@ -85,18 +85,44 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     (M3a-2), vault door (M3b-2), Spire barrier (here) — all built, all closed until M3c/M3d open them.
     Browser-verified: closed barrier stops the player at r 10.7; after `open()` the player walks through the gate, up
     both tiers to the Stone; summit and far silhouette readable. Dev: `__echo.world.spire.barrier.open()`.
-- [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
-- [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
+- [x] M3c Puzzles: `gameplay/puzzles.ts` `Puzzles` (`Game.puzzles`) + `gameplay/interactables.ts` `Interactables`
+  (`Game.interactables`):
+  - `Interactables`: closest usable item within its `reach` (ground plane, ±2.6 m in height) → `uiStore.interactPrompt`;
+    E runs `interact()`. Off while not playing, in a cinematic or in free cam. HUD: `components/echo/interact-prompt.tsx`
+    ("E · prompt" above the pulse ring, one line in `hud.tsx`).
+  - Choir Sequence: a pulse within 9 m of `hall.altar` starts a replay (`CHOIR_ORDER` 2, 0, 3, 1 = SE, NW, SW, NE): one
+    `GhostScene` singer per pillar (not in the registry; the puzzle drives it with a short `timing`), glyph flare and
+    `choirNote` per voice, 1.8 s apart. Pillars are interactables (`PROMPTS.attunePillar`): right = lit + `puzzleStep`
+    ok; wrong = all silenced, reset, `puzzleStep` ok:false; the 4th → `gate.open()` + `puzzleSolved`. Pulses during a
+    replay are ignored; the replay still plays after solving (a memory).
+  - Glass Bridge: stepping onto the span at one pier and leaving it past the other → `stabilize()` + `puzzleSolved`.
+    A `respawn` in the chasm while unsolved = `puzzleStep` ok:false (unlocks journal hints).
+  - Dormant Grid: a pulse charges the nodes within 11 m of its origin when the wavefront arrives (`puzzleStep` ok +
+    index); full for 5 s, fades over 13 s, flickers below 35 %; a node going dark near the Works = `puzzleStep`
+    ok:false; all three lit → nodes held at 1, `setPower` ramps over 2.5 s, `door.open()`, `puzzleSolved`.
+  - Load: solved puzzles are restored at construction from `Game.progression` (gate and door open instantly, bridge
+    stable, nodes + power on, glyphs lit).
+  - `phaseWarn`: `PhaseObject.onWarn`, wired to the event by `ReactiveRegistry.add()`, fires when a flicker starts
+    (bridge planks, Ghost Garden stones). `GhostScene` got an optional `timing` (hold / fades) parameter.
+  - Browser-verified: replay order + singers, prompt + E press, wrong-note reset, solve + gate, grid solve + door,
+    `phaseWarn`, bridge crossing, all three restored after a reload. Dev: `__echo.emitPulse()`,
+    `__echo.puzzles.choir.attune(i)`.
+- [ ] M3d world side: fragments, secrets, Heart Key placement, load spawn, finale
 
 ## Next steps
 
-1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3b is complete (Glass Bridge, Conduit Works, Undervault, Listening Spire, gates). **M3c puzzles** next.
-   M3d hooks already in place: Heart Key `World.undervault.key` (`take()`), barrier `World.spire.barrier.open()` when
-   the player holds the key within ~4 m of `World.spire.gate`, finale at `World.spire.stone` (`setAwake`).
-3. M3c: the Glass Bridge puzzle only needs `World.bridge` (crossing while solid → `stabilize()` + `puzzleSolved`).
-   Dormant Grid: on each `pulse`, charge `World.works.nodes` within range of the origin (~12 m), decay over ~15 s,
-   all three charged → `works.setPower(1)` + `works.door.open()` + `puzzleSolved`; on load `door.open(true)`.
+1. **Owner, 2026-10-31: there is no Chat B any more.** Chat A finishes Lane A, then continues Lane B from
+   `docs/lane-b.md` "Next steps" (M5a-2 pause tabs, M5a-3 end screen, M5b), then M6. B's files may be edited freely.
+2. **M3d world side** next, in two saves:
+   - M3d-1: 10 memory fragments (`FRAGMENTS` in content.ts: region, `pulseOnly` f02 f04 f06 f07 f09) as interactables
+     (`PROMPTS.recoverMemory`) → `fragmentFound`; pulse-only ones are only visible/usable for a while after a pulse;
+     skip found ones on load (`progress.has(id)`). Load spawn: `Game.continueJourney()` should put the player at
+     `REGION_SPAWNS[progression.checkpoint]` (now always `SPAWN`).
+   - M3d-2: secrets (Ghost Garden: reach the top phase stone; Sleeping Giant: buried statue a pulse reveals, then
+     interact; Drowned Bell: pulse inside the crater) → `secretFound`; Heart Key: interact at `World.undervault.key`
+     (`take()`, `PROMPTS.takeHeartKey`) → `itemFound`; barrier: holding the key within ~4 m of `World.spire.gate`
+     (`PROMPTS.placeHeartKey`) → `barrier.open()`; finale: `PROMPTS.touchStone` at `World.spire.stone` → `finaleStart`,
+     world-wide pulse, `spire.setAwake` ramp, then `endingStart`. Restore all of it on load (key taken, barrier open).
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -112,3 +138,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3b-2 | 2026-10-31 | Chat UZLjCTVV9He ran out of credits mid-step (partial edits auto-committed as `553768f`, off `main`). Next chat: wrote `works.ts` (hub, grid nodes, towers, tanks, vault house + sinking door, echoes), `World.works`, toned down metal rust. tsc clean, browser-verified. |
 | M3b-3 | 2026-10-31 | Two chats (uyj6eVOtBnp, Y2KvllYEyFb) ran out mid-step; their auto-commits `d7ac0ed` + `0b1f7c4` held the whole Undervault (chamber, Heart Key, terrain hole, chamber glow, step-up + `onCollider` physics). Next chat verified the door walk-out fix and saved it. tsc clean, browser-verified. |
 | M3b-4 | 2026-10-31 | Listening Spire summit (Stone, vanes, crown, barrier ring with Heart gate), ramp waystones + foot gate, echoes; `World.spire`. M3b done. tsc clean, browser-verified. |
+| M3c | 2026-10-31 | Interactables + HUD prompt, Choir Sequence (ghost replay, attune, gate), Glass Bridge (crossing → stable), Dormant Grid (timed node charges → door), `phaseWarn`, restore on load. tsc clean, browser-verified. Owner: no Chat B any more; A continues Lane B afterwards. |

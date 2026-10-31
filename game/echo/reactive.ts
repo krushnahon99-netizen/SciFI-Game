@@ -22,6 +22,8 @@ export interface Reactive {
   hit(pulse: PulseInfo, arrival: number): void
   /** Called every frame after a hit while it returns true (play clock; dt is 0 while paused). */
   update?(clock: number, dt: number): boolean
+  /** Declared as null by objects that can warn before they fade (phase objects); `add()` wires it to `phaseWarn`. */
+  onWarn?: ((center: THREE.Vector3) => void) | null
 }
 
 /** Play-clock time the wavefront reaches (x, y, z), or Infinity when the point lies beyond the pulse radius. */
@@ -85,6 +87,10 @@ export class ReactiveRegistry {
 
   add<T extends Reactive>(item: T): T {
     this.items.push(item)
+    const reactive: Reactive = item
+    if (reactive.onWarn === null) {
+      reactive.onWarn = ({ x, y, z }) => this.events.emit('phaseWarn', { position: { x, y, z } })
+    }
     return item
   }
 
