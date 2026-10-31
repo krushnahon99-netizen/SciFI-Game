@@ -4,14 +4,16 @@
 > This file is your complete briefing. Read it top to bottom before touching code.
 > The owner runs out of credits often and switches accounts, so **every session must leave this file accurate**.
 > Requirements source of truth: [`docs/GAME_SPEC.md`](docs/GAME_SPEC.md) (the owner's original brief, verbatim).
+> Player-facing docs (install, controls, settings, feature checklist, limitations): [`README.md`](README.md).
 
 **Repo:** https://github.com/krushnahon99-netizen/SciFI-Game (public, branch `main`)
 
-> **PARALLEL MODE (since 2026-10-30):** two chats work at the same time on separate accounts: **Chat A** (world &
-> gameplay) and **Chat B** (systems & UI). After this file, read [`docs/coordination.md`](docs/coordination.md):
-> it says which lane does what, who owns which files, and how to save. It overrides §0 step 5 and §7 while
-> parallel mode is on. Lane status lives in `docs/lane-a.md` / `docs/lane-b.md`; this file stays frozen until
-> both lanes finish. Start prompts for each chat: coordination §8.
+> **State (2026-10-31): every planned milestone (M0–M6) is done; the game is playable start to finish.**
+> Parallel mode (two chats, Lane A / Lane B) ended with M6: one chat works on the whole project again and
+> `docs/coordination.md` is history only. The detailed as-built notes are [`docs/lane-a.md`](docs/lane-a.md) (world,
+> player, echo, puzzles, fragments, secrets, finale) and [`docs/lane-b.md`](docs/lane-b.md) (content, progression,
+> audio, title / intro / menus / end screen, touch, auto quality). Read the section for the system you are about to
+> change, and keep it accurate.
 
 ---
 
@@ -19,20 +21,21 @@
 
 1. Read this file fully. Read `docs/GAME_SPEC.md` only for the section your current step needs.
 2. Follow **§0.1 Credit budget protocol** for the whole session (mandatory).
-3. Look at **§3 Current status** and **§4 Next steps**. Continue from the first unchecked item.
+3. Look at **§3 Current status** and **§4 Next steps**. Continue from the first open item, or do what the owner asks.
    Do **not** restart, re-plan, or rewrite finished systems unless they are broken.
-4. `pnpm install` and check the build/console before changing anything.
-5. Work in **sub-milestones** (M1a, M1b, …). After **each** one:
-   - update §3, §4 and append a line to **§9 Milestone log**;
+4. `pnpm install`, `pnpm exec tsc --noEmit`, and check the console before changing anything.
+5. Work in **sub-milestones**. After **each** one:
+   - update §3, §4, append a line to **§9**, update the as-built notes (lane file) of the system you changed and, if a
+     feature changed, the README checklist;
    - commit + push to **`main`** (see **§7 Saving work**). A step is not done until it is on `main`.
 6. Never commit a broken build. Unfinished files may be committed if nothing imports them yet.
 
-**Owner's resume prompt** (paste into a fresh chat after importing this repo; edit the budget):
+**Owner's resume prompt** (paste into a fresh chat after importing this repo; edit the budget and the task):
 
 ```
 Budget: $5.00. Read AGENTS.md first and follow its resume protocol and credit rules (§0.1).
-Continue PROJECT ECHO from "Next steps". I authorize pushing each finished sub-milestone
-directly to main. Keep AGENTS.md updated.
+Continue PROJECT ECHO from "Next steps" (or: <what you want changed>). I authorize pushing each
+finished sub-milestone directly to main. Keep AGENTS.md updated.
 ```
 
 ### 0.1 Credit budget protocol (MANDATORY)
@@ -48,7 +51,7 @@ cache-write $5 per 1M tokens):
 | Action | Approx. cost |
 | --- | --- |
 | Each new owner message (context load / re-cache) | $0.30–0.70 before any work |
-| Each tool step | $0.02–0.06 (grows with context size) |
+| Each tool step | $0.02–0.06 (grows with context size; the M6 session paid ~$1.5 for its first ~25 steps) |
 | Model output, including reasoning | $0.02 per 1k tokens |
 | Writing ~1,000 lines of code | ~$0.35 all-in |
 | One credit check, cheap way (below) | ~$0.03–0.05 |
@@ -103,7 +106,7 @@ downloads: geometry, textures and audio are procedural.
 | Area | Decision | Why |
 | --- | --- | --- |
 | Host | Next.js 16 (App Router) + React 19, pnpm | v0 preview + one-click Vercel deploy. The page only mounts the game. |
-| 3D | `three` (plain, **no** react-three-fiber) | Full control of the game loop and systems; framework-agnostic engine in `game/`. |
+| 3D | `three` r186 (plain, **no** react-three-fiber) | Full control of the game loop and systems; framework-agnostic engine in `game/`, lazy-loaded. |
 | Post FX | three's built-in `EffectComposer` + `UnrealBloomPass` + `OutputPass` | Version-matched with three; disabled on Low. |
 | UI | React components in `components/echo/` reading a tiny external store (`useSyncExternalStore`) | Engine never re-renders React per frame; UI updates on events / throttled stats. |
 | Styling | Tailwind v4 tokens in `app/globals.css` | Fonts: Michroma (display) + Geist (body). |
@@ -113,54 +116,42 @@ downloads: geometry, textures and audio are procedural.
 | Collision | Custom: heightmap ground + circle/box colliders in a spatial hash | Cheap, deterministic, no physics library needed. |
 | Echo pulse | Two global pulse "slots" in shared uniforms injected into world materials via `onBeforeCompile`; CPU registry triggers reactive objects by distance/time | One uniform update per frame drives every surface effect; no world duplication. |
 | Fog | Global `ShaderChunk` override → height-aware exponential fog with sun in-scatter tint | Applies to every material consistently. |
+| Quality | Presets Low…Ultra + Auto (steps down on sustained low FPS) + render scale | Spec §9: adaptive rendering, measured not promised. |
 
 ## 3. Current status
 
-Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Save after every one.
+All planned milestones are done. Details for M3a-3 onwards: `docs/lane-a.md` / `docs/lane-b.md`.
 
 - [x] **M0** — Repo, handoff docs (`AGENTS.md`), original spec (`docs/GAME_SPEC.md`), README stub.
 - [x] **M0.1** — Credit budget protocol (§0.1), sub-milestone plan, save-to-`main` rule (§7).
 - **M1 — Engine foundation**
-  - [x] **M1a** Bootstrap (three r186). `EchoGame` lazy-imports the engine client-side; `Game.ts` loop + phase machine (`playing`/`paused`, pause on pointer-lock loss); `input.ts` (actions by `KeyboardEvent.code`, pointer lock with automatic drag-to-look fallback for sandboxed iframes, virtual API for touch); `renderer.ts` (ACES, PCF shadows, EffectComposer bloom with MSAA target, GPU name + software-GPU detection → Low); `quality.ts` presets; `settings.ts`/`storage.ts` (localStorage + memory fallback); `ui/store.ts` + `useUI`; HUD (FPS chip, F3 stats), boot overlay, minimal pause menu (quality + render scale). Temporary test scene in `world/world.ts` and free-fly `player/spectator.ts`. Verified in browser: renders, F3, pause, quality switch, settings saved.
-  - [x] **M1b** World look (details: §4 Engine notes). `noise.ts`, `layout.ts`, `terrain.ts` (analytic height → 361² heightmap → LOD chunks + skirts, splat + baked sun-shadow textures), `render/shaderChunks.ts` (height fog, `patchWorldMaterial`), `materials.ts`, `sky.ts` (ringed planet, sun, stars, clouds), `mountains.ts`, placeholder monolith in `world.ts`, bloom on Medium+. Tuned: `PLANET_NOTCH` (low rim + ranges under the planet), ranges rise with distance, softer trail edges. Browser-verified on Low and High.
-  - [x] **M1c** Player. `physics/collision.ts` (`Collision`, owned by `World`: heightmap ground + normal, cylinder / yaw-box colliders in a 16 m hash, `resolveCharacter()` with walkable tops, `clearance()` sphere march for the camera); `player/player.ts` (walk 4.5 / run 8 m/s, jump with coyote + buffer, 40° slope limit with sliding, ground snap); `player/avatar.ts` (primitive explorer, glowing visor + backpack core, procedural idle/walk/run/air/landing); `player/camera.ts` (`CameraRig`: orbit, shoulder offset, wheel zoom, pull-in on hits, `setCinematic()`/`clearCinematic()`); `Game.ts` wiring (F4 = free-fly debug camera; shadow focus = player). Monolith has box colliders. Browser-verified: spawn view, running + camera follow. Not yet exercised in the browser: jumping, slope limit, collider push, camera pull-in.
+  - [x] **M1a** Bootstrap (three r186). `EchoGame` lazy-imports the engine client-side; `Game.ts` loop + phase machine; `input.ts` (actions by `KeyboardEvent.code`, pointer lock with automatic drag-to-look fallback for sandboxed iframes, virtual API for touch); `renderer.ts` (ACES, PCF shadows, EffectComposer bloom with MSAA target, GPU name + software-GPU detection → Low); `quality.ts` presets; `settings.ts`/`storage.ts` (localStorage + memory fallback); `ui/store.ts` + `useUI`; HUD, boot overlay, pause menu; free-fly `player/spectator.ts`.
+  - [x] **M1b** World look (details: §4 Engine notes). `noise.ts`, `layout.ts`, `terrain.ts`, `render/shaderChunks.ts` (height fog, `patchWorldMaterial`), `materials.ts`, `sky.ts` (ringed planet, sun, stars, clouds), `mountains.ts`, bloom on Medium+.
+  - [x] **M1c** Player. `physics/collision.ts` (`Collision`, owned by `World`: heightmap ground + normal, cylinder / yaw-box colliders in a 16 m hash, `resolveCharacter()` with walkable tops, `clearance()` sphere march for the camera); `player/player.ts` (walk 4.5 / run 8 m/s, jump with coyote + buffer, 40° slope limit with sliding, ground snap); `player/avatar.ts` (primitive explorer, procedural animation); `player/camera.ts` (`CameraRig`: orbit, shoulder offset, wheel zoom, pull-in on hits, `setCinematic()`/`clearCinematic()`); F4 free-fly debug camera. Jump, slope limit (ridge foot), collider push (Monolith) and camera pull-in (5.2 → 0.5 m) all browser-verified by M6.
 - **M2 — Echo pulse**
-  - [x] **M2a** `echo/pulseShader.ts` (tuning constants + world-material GLSL `echoPulseEmission`: wavefront band, Truchet circuit-glyph reveal fading over 6 s), `echo/echoSystem.ts` (2 slots in `sharedUniforms.uEchoPulses`, play clock `uEchoClock` frozen while paused, 2.5 s cooldown, additive fresnel shell per slot, `pulse` event `{ origin, time, slot }`), avatar core flare, HUD charge ring (`components/echo/pulse-indicator.tsx`). Browser-verified + tuned (shell is rim-only so it doesn't veil the view from inside; glyphs use a saturated tint so they stay cyan). Jump verified.
-  - [x] **M2b** `echo/reactive.ts` (`ReactiveRegistry`: per-pulse bounding-sphere test → hits queued by arrival time → `hit()`, per-frame `update()` only while active; `RevealTimer`; `arrivalAt()`; emits `reactiveHit`), `hologram.ts` (additive memory material: fresnel, scanlines, sweep build-up, noise dissolve), `glyphs.ts` (`GlyphTrail`, instanced ground glyphs, 2 arrival slots per instance in shader), `crystals.ts` (`CrystalCluster`, instanced, flare + climbing band), `ghosts.ts` (`GhostScene`: robed figures, poses walk/kneel/sing/reach along paths), `pastState.ts` (`PastStateOverlay`), `phase.ts` (`PhaseObject`: collider `enabled` toggled, 7 s hold, flicker warning, `stabilize()`). Content in `world/structures/cradle.ts` (intact-monolith hologram, 3 pilgrim ghosts, hidden glyph path to Ghost Garden, 2 crystal clusters, Ghost Garden phase steps). Dev handle `window.__echo` (teleport: `__echo.player.position.set(x,y,z)`). Browser-verified: all trigger; standing on a solid phase stone works. NOT confirmed: phase stone expiry (player should fall after ~7 s) — SwiftShader ran the game clock ~4× slower than real time.
+  - [x] **M2a** `echo/pulseShader.ts` (tuning constants + world-material GLSL `echoPulseEmission`: wavefront band, Truchet circuit-glyph reveal fading over 6 s), `echo/echoSystem.ts` (2 slots in `sharedUniforms.uEchoPulses`, play clock `uEchoClock` frozen while paused, 2.5 s cooldown, additive fresnel shell per slot, `pulse` event), avatar core flare, HUD charge ring (`components/echo/pulse-indicator.tsx`).
+  - [x] **M2b** `echo/reactive.ts` (`ReactiveRegistry`: per-pulse bounding-sphere test → hits queued by arrival time → `hit()`, per-frame `update()` only while active; `RevealTimer`; `arrivalAt()`; emits `reactiveHit`), `hologram.ts`, `glyphs.ts` (`GlyphTrail`), `crystals.ts` (`CrystalCluster`), `ghosts.ts` (`GhostScene`), `pastState.ts` (`PastStateOverlay`), `phase.ts` (`PhaseObject`: collider `enabled` toggled, 7 s hold, flicker warning, `stabilize()`). Content in `world/structures/cradle.ts`. Dev handle `window.__echo` (dev builds only). Phase expiry verified (lane-a).
 - **M3 — World, puzzles, progression**
-  - [ ] **M3a** Structures: Cradle + Sundered Monolith, Hall of Echoes, Singing Vale (`world/structures/*.ts`), scatter, particles, `gameplay/regions.ts`.
-    - [x] **M3a-1** `world/structures/context.ts` (`StructureContext { scene, collision, reactives, animate }`, `Animator`);
-      `cradle.ts` `buildCradle()` = `buildSunderedMonolith()` (two-tier octagonal dais, `fracturedHalf()` split slab with
-      `runeInlay()`, broken ring turning in the gap, climbable fallen top, half-sunk capstone, dark ring arc, merged rubble,
-      9 standing stones on a 19 m ring; colliders for all) + `buildCradleEchoes()`. Placeholder removed from `world.ts`;
-      `PastStateOverlay` intensity 1.1 → 0.8. tsc clean; not browser-checked yet.
-    - [x] **M3a-2** Hall of Echoes: `world/structures/hall.ts` `buildHall()` returns `Hall { altar, pillars[4] (position +
-      own glyph material, dim until lit), gate: HallGate }`, kept as `World.hall` for M3c. South portal (z 118, snapped
-      lintel with glyph band), ruined colonnade (`RUIN` table, fallen drums + lintel), masonry wall facing, sanctum
-      (2-tier dais, altar, hovering resonator, 4 glyph pillars with distinct sigils), sealed north gate (z 76;
-      `open(instant?)` slides the leaves into the pylons and disables the door collider past 45 %), rubble, intact-temple
-      `PastStateOverlay`, 2 crystal clusters. Shared helpers: `world/geometry.ts` (`mergeParts`, `block`).
-      Browser-verified: portal, sanctum + pulse hologram, open gate. Until M3c the closed gate seals the north half;
-      dev: `__echo.world.hall.gate.open()`.
-  - [ ] **M3b** Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates.
-  - [ ] **M3c** Puzzles: Choir Sequence, Glass Bridge, Dormant Grid (`gameplay/puzzles.ts`, `interactables.ts`).
-  - [ ] **M3d** Progression: `content.ts` (all text), memory fragments, 3 secrets, objectives, journal data, save/load (`progression.ts`), respawn, ending.
-- [ ] **M4** Procedural audio (`audio/audio.ts`): drones, wind, crystal resonance, pulse, UI/puzzle cues, footsteps, volume + mute.
-- **M5 — UI**
-  - [ ] **M5a** Title/continue, skippable intro cinematic, pause menu (journal / settings / controls), end screen.
-  - [x] **M5b** Touch controls, perf overlay (F3), auto-quality (details: `docs/lane-b.md`).
-- [ ] **M6** Optimization, browser testing, README checklist (implemented / tested / untested), known limitations.
+  - [x] **M3a-1** Sundered Monolith (`world/structures/context.ts` `StructureContext`, `Animator`; `cradle.ts` `buildCradle()`: two-tier dais, fractured slab with rune inlay, broken ring, fallen top, 9 standing stones, colliders; echoes).
+  - [x] **M3a-2** Hall of Echoes (`world/structures/hall.ts` `buildHall()` → `World.hall { altar, pillars[4], gate: HallGate }`; portal, colonnade, sanctum, sealed north gate `open(instant?)`; `world/geometry.ts` helpers).
+  - [x] **M3a-3 / M3a-4** Singing Vale, scatter, particles; regions + region title (lane-a).
+  - [x] **M3b** Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, all gates (lane-a).
+  - [x] **M3c** Puzzles: Choir Sequence, Glass Bridge, Dormant Grid; interactables + HUD prompt (lane-a).
+  - [x] **M3d** `content.ts` + `progression.ts` (all text, save/load, objectives, journal data; lane-b); fragments, secrets (Ghost Garden, Sleeping Giant, Drowned Bell), Heart Key, Spire barrier, finale, load spawn (lane-a).
+- [x] **M4** Procedural audio (`game/audio/`), volume + mute (lane-b).
+- [x] **M5** UI: title / continue, skippable intro, pause menu tabs (journal / settings / controls), end screen (M5a); touch controls, auto quality, perf overlay (M5b) (lane-b).
+- [x] **M6** Test pass + polish + docs: M1c leftovers verified, draw calls per preset measured, production build built and served, pinch zoom + Settings "Performance stats" switch (touch users had no F3), README deliverables (install, controls, settings, checklist, limitations), parallel mode ended.
 
-## 4. Next steps (ordered — start at the top)
+## 4. Next steps (all optional: the planned game is finished)
 
-1. Quick checks first (cheap): phase stone expiry at the Ghost Garden (teleport onto the first stone right after a pulse,
-   read `__echo.player.position.y` once `echo.clock` > pulse + 8). Note: the HUD FPS is computed from capped dt, so it
-   overstates FPS on SwiftShader. Still untested from M1c: slope limit at the ridge, monolith collider push, camera pull-in.
-2. **M3a** (see §3): M3a-1 (monolith) and M3a-2 (Hall) are done; next **M3a-3** the Singing Vale
-   (`world/structures/vale.ts`: crystal formations, scatter, particles), then **M3a-4** `gameplay/regions.ts`
-   (area discovery + HUD region title).
-3. Then M3b → M3c → … one sub-milestone at a time. If you stop mid-step, write here exactly what is unfinished
-   (file, function, what is left).
+1. Ask the owner what to improve, or pick one of these (each is one sub-milestone):
+   - **Real-device pass (owner):** play on a desktop GPU and a phone; report FPS (F3 or Settings → Performance stats)
+     and anything broken. Everything else builds on that feedback.
+   - Camera: fade or hide the avatar when the camera is pulled in under ~1 m (it then fills the view).
+   - Gamepad support (`game/core/input.ts`: Gamepad API → move / look / actions) and key rebinding.
+   - Auto quality: step back up after a long smooth stretch (today it only steps down).
+   - Cradle dais: its risers (~0.47 m) exceed the step height; lower them or add steps if players find it awkward.
+2. If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
 **Engine notes (as built in M1b — read before touching rendering/world code):**
 - `layout.ts` holds every coordinate. `terrain.ts` `sampleTerrain()` is the single analytic height definition; mesh,
@@ -187,26 +178,30 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 ## 5. Architecture / file map
 
 ```
-app/
-  layout.tsx            metadata, viewport, fonts
-  page.tsx              mounts <EchoGame/> (client only)
-  globals.css           Tailwind v4 theme tokens + game UI styles
-components/echo/        React UI overlay: echo-game.tsx (mounts engine, GameContext), use-ui.ts (store hook),
-                        hud.tsx, perf-overlay.tsx, boot-overlay.tsx, pause-menu.tsx (+ touch, intro, end screen later)
+app/                    layout.tsx (metadata, viewport, fonts), page.tsx (mounts <EchoGame/>), globals.css (tokens, keyframes)
+components/echo/        React overlay: echo-game.tsx (mounts engine; remount = new journey), game-context.tsx (useGame),
+                        use-ui.ts, hud.tsx, perf-overlay.tsx, boot-overlay.tsx, region-title.tsx, progress-hud.tsx,
+                        interact-prompt.tsx, pulse-indicator.tsx, audio-indicator.tsx, title-screen.tsx,
+                        intro-overlay.tsx, pause-menu.tsx, menu-panels.tsx, menu.ts, end-screen.tsx,
+                        touch-controls.tsx, use-touch-mode.ts
 game/                   Framework-agnostic engine (plain TypeScript + three)
-  core/                 Game.ts (init/loop/state machine, public UI API), events.ts, input.ts, settings.ts, storage.ts
-  render/               renderer.ts (renderer/composer/resize/stats), quality.ts (presets/auto), shaderChunks.ts (fog override, shared uniforms, material injection)
-  world/                layout.ts (ALL world coordinates — single source of truth), terrain.ts, sky.ts, mountains.ts, scatter.ts, particles.ts, materials.ts, geometry.ts, structures/*.ts (one builder per region)
-  physics/collision.ts  colliders, spatial hash, player resolution, camera ray tests
-  player/               player.ts (controller), avatar.ts (model + procedural animation), camera.ts (third-person rig, cinematic mode)
-  echo/                 echoSystem.ts (pulses, uniforms, shell visuals), reactive.ts (reactive object types)
-  gameplay/             interactables.ts, puzzles.ts, progression.ts (state, save/load), content.ts (all story text), regions.ts (area discovery), ids.ts (shared IDs + ProgressView)
-  audio/audio.ts        procedural Web Audio engine
+  core/                 Game.ts (init/loop/phases, public UI API), events.ts, input.ts, settings.ts, storage.ts
+  render/               renderer.ts, quality.ts (presets, device guess), autoQuality.ts, shaderChunks.ts
+  world/                layout.ts (ALL coordinates), world.ts, terrain.ts, noise.ts, sky.ts, mountains.ts, scatter.ts,
+                        particles.ts, materials.ts, geometry.ts, structures/ (context, cradle, hall, vale, bridge,
+                        works, undervault, spire, giant, bell)
+  physics/collision.ts  colliders, spatial hash, player resolution, camera clearance
+  player/               player.ts (controller), avatar.ts, camera.ts (third-person rig, cinematics), spectator.ts (F4)
+  echo/                 echoSystem.ts, pulseShader.ts, reactive.ts, hologram.ts, glyphs.ts, crystals.ts, ghosts.ts,
+                        pastState.ts, phase.ts, glow.ts
+  gameplay/             ids.ts (shared IDs + ProgressView), content.ts (ALL player-facing text), progression.ts (save),
+                        regions.ts, interactables.ts, puzzles.ts, fragments.ts, secrets.ts, finale.ts, intro.ts
+  audio/                audio.ts (AudioEngine), kit.ts, ambience.ts, sfx.ts
   ui/store.ts           engine → React bridge (external store)
-docs/GAME_SPEC.md       original brief (verbatim)
+docs/                   GAME_SPEC.md (brief), lane-a.md + lane-b.md (as-built notes), coordination.md (history)
 ```
 
-## 6. Game design (as built / planned — keep in sync with code)
+## 6. Game design (as built — keep in sync with code)
 
 **World**: ~720 m × 720 m heightmap (2 m cells), playable radius ~300 m, unclimbable outer cliffs, layered
 distant mountain silhouettes beyond. A giant ringed planet dominates the sky; a low, dying amber sun.
@@ -226,17 +221,18 @@ facility door, the Spire energy barrier.
 3. *Dormant Grid* (Conduit Works): 3 power nodes too far apart for one pulse. Each pulse charges nodes
    in range for a limited time; all 3 charged at once completes the circuit and opens the sealed door.
 
-**Secrets (≥3)**: Ghost Garden (phase stones), Sleeping Giant (buried statue), Drowned Bell (crater).
-**Memory fragments**: ~10 (some only visible after a pulse). Journal lists fragments, places, secrets.
+**Secrets (3)**: Ghost Garden (phase stones), Sleeping Giant (buried statue), Drowned Bell (crater).
+**Memory fragments**: 10 (5 only visible after a pulse). Journal lists fragments, places, secrets, hints.
 **Ending**: Heart Key from the Undervault lowers the Spire barrier; pulse at the Listening Stone on the
 summit → world-wide pulse, the past fully revealed, end screen with stats; free roam after.
 
 **Controls**: WASD/arrows move, Shift run, Space jump, mouse look (click to lock), Q / left click = Echo
-Pulse, E = interact, Esc = pause, J = journal, M = mute, F3 = perf stats, F4 = free-fly debug camera, wheel = zoom. Touch: left joystick, right-side
-look area, Pulse / Jump / Interact / Pause buttons.
+Pulse, E = interact, Esc = pause, J = journal, M = mute, F3 = perf stats (also Settings → Performance stats),
+F4 = free-fly debug camera, wheel = zoom. Touch: left joystick, right-side look area (pinch = zoom),
+Pulse / Jump / Interact / Menu buttons.
 
 **Quality presets**: Low (no shadows/bloom, DPR ≤ 1), Medium, High, Ultra (+ Auto, which only steps
-down when measured FPS stays low). Render-scale slider, FPS/draw-call overlay.
+down when measured FPS stays low). Render-scale slider, FPS/draw-call overlay. Table: README "Graphics settings".
 
 ## 7. Saving work (git) — every sub-milestone must reach `main`
 
@@ -244,31 +240,43 @@ Every new chat starts from `main`, so work that isn't on `main` is invisible to 
 The owner has authorized pushing finished sub-milestones directly to `main` (also stated in the resume prompt).
 
 **In v0 (chat imported from this repo):**
-1. `SyncGit` with a commit message like `M1a: engine bootstrap` (first time in a chat: `branchName: "v0/echo-dev"`).
-   It commits and pushes to the `v0/...` working branch only. Note: `v0/echo-dev` exists on the remote at an old
-   commit (behind `main`), so in a new chat use a fresh name (e.g. `v0/echo-<milestone>`). That way the branch starts from current `main`.
-2. Then fast-forward `main`: `git push origin HEAD:main`. v0 shows the owner a permission prompt for this push
-   (platform rule for pushes to the default branch); the owner approves it. If it fails or is declined, ask the
-   owner to merge the branch (v0 → Settings → Git) before opening a new chat.
+1. `SyncGit` with a commit message like `M7a: gamepad input` and a fresh branch name per chat
+   (`v0/echo-<step>`; old names exist on the remote at old commits), so the branch starts from current `main`.
+2. Fast-forward `main`: `git push origin HEAD:main`. v0 shows the owner a permission prompt for this push; the owner
+   approves it. Rejected because `main` moved? `git pull --no-rebase --no-edit origin main`, `pnpm exec tsc --noEmit`,
+   commit, push again, then `SyncGit` once more so v0 follows the branch.
 
-**Elsewhere (plain git):** `git add -A && git commit -m "M1a: …" && git push origin HEAD:main`
+**Elsewhere (plain git):** `git add -A && git commit -m "M7a: …" && git push origin HEAD:main`
 (if `origin` isn't GitHub: `git remote add github https://github.com/krushnahon99-netizen/SciFI-Game.git`).
 
 - Never commit secrets. `.env*` files must stay ignored (check `git status` before committing).
+- **Never** force-push, rebase commits that are already pushed, or reset `main`.
 - 401/403 on push, or SyncGit says "no write access" (`gh api repos/krushnahon99-netizen/SciFI-Game` shows
   `push: false`): the chat's GitHub access is missing or stale; ask the owner to reconnect/verify GitHub
   (v0 → Settings → Git), then retry once.
-- **Unsaved work from an earlier chat?** Run `git ls-remote origin` first: a chat that ran out of credits may have
-  pushed its `v0/echo-*` branch without reaching `main`. If that branch is ahead of `main`
-  (`git merge-base --is-ancestor main <branch>`), check it out, run tsc, and fast-forward `main` from it.
+- **Unsaved work from an earlier chat?** A chat that ran out of credits may have pushed (or v0 auto-committed) a
+  `v0/...` branch that never reached `main`. Fetch all heads (`git fetch origin '+refs/heads/*:refs/remotes/origin/*'`)
+  and list branches with commits not on `main` (`git rev-list --count origin/main..<branch>`). Checked in M6: the only
+  ones left (`v0/develop-scifi-game-*`, `v0/echo-m1b`, `v0/m3c-puzzles-implementation-86ba37e3`) are superseded.
 
 ## 8. Known issues & limitations
 
 - Anti-aliasing is MSAA on the bloom composer target only, so **Low** (no bloom) has no AA.
 - Pointer lock is refused in sandboxed iframes; input then switches to drag-to-look (click = pulse).
-- Headless test browser uses SwiftShader (software GL): it auto-selects Low; its FPS says nothing about real GPUs.
+- Auto quality only steps down; the Cradle dais needs a jump (risers ~0.47 m > step height).
 - three r186: `PCFSoftShadowMap` was removed (use `PCFShadowMap`); `THREE.Clock` is deprecated (loop uses rAF time).
-- Untested so far: real GPUs, mobile devices, Safari/Firefox.
+- Untested: real GPUs, mobile devices, Safari/Firefox, the production build in a browser (built + served only).
+
+**Testing tips (headless agent-browser):**
+- It renders with SwiftShader (software GL): fresh profiles start on Low; at 1280×800 it runs ~1 FPS, so game time
+  crawls. For behaviour tests use a small viewport (`set viewport 480 320`) plus `__echo.setQuality('low');
+  __echo.setRenderScale(0.5)` (~8 FPS). Its FPS says nothing about real GPUs.
+- HMR does not swap engine class instances: after editing a class in `game/`, reload the page before testing (in M6 a
+  new `Input` method was `undefined` on the live instance until a reload).
+- `agent-browser` commands run in a separate sandbox: only the dev server on port 3000 is reachable and `curl` is
+  missing there. Check other ports from a plain Bash call (e.g. `node -e "fetch('http://localhost:3100')…"`).
+- Steering: `__echo.input.setVirtualMove(x, y)` (camera-relative), teleport with `__echo.player.position.set(x, y, z)`,
+  ground height `__echo.world.terrain.heightAt(x, z)`, colliders in `__echo.world.collision.cells`.
 
 ## 9. Milestone log (append-only)
 
@@ -283,9 +291,12 @@ The owner has authorized pushing finished sub-milestones directly to `main` (als
 | M1b | 2026-10-30 | 4th session: M1b code was already on `main` (M1b-1, M1b-3) but the docs weren't updated. Browser-verified; tuned the planet notch, layered ranges and trail edges; condensed the M1b design/notes into §4 "Engine notes". |
 | M1c | 2026-10-30 | Player: collision (hash, colliders, camera clearance), controller (run/jump/slope limit), procedural avatar + animation, third-person camera rig with cinematic API, F4 free cam. tsc clean; browser-verified spawn + running. |
 | M1c-save | 2026-10-30 | 5th session (new account): the M1c chat ran out of credits while fighting a push-access error, so M1c (`9a88f7a`) was only on branch `v0/echo-m1c`, not `main`. Verified tsc, fast-forwarded `main` to it, added the recovery steps to §7. |
-| M2a-wip | 2026-10-30 | Same session, credits ran out mid-check. M2a written: `game/echo/pulseShader.ts` (constants + world-material GLSL: wavefront band, Truchet glyph reveal), `game/echo/echoSystem.ts` (2 slots, play clock `uEchoClock`, 2.5 s cooldown, additive shell meshes, `pulse` event), avatar core flare + release pose, HUD charge ring (`components/echo/pulse-indicator.tsx`). tsc clean; NOT visually verified. **Next session: open the game, press Q, check wavefront/glyphs/shell/ring, tune, then tick M2a in §3 and move §4 to M2b.** |
+| M2a-wip | 2026-10-30 | Same session, credits ran out mid-check. M2a written: `game/echo/pulseShader.ts` (constants + world-material GLSL: wavefront band, Truchet glyph reveal), `game/echo/echoSystem.ts` (2 slots, play clock `uEchoClock`, 2.5 s cooldown, additive shell meshes, `pulse` event), avatar core flare + release pose, HUD charge ring (`components/echo/pulse-indicator.tsx`). tsc clean; NOT visually verified. |
 | M2a | 2026-10-30 | 6th session: browser-verified the pulse. Shell was a view-filling veil from inside (angle-independent wall term) → now fresnel-rim only with near-camera fade; glyphs got their own saturated tint and a sparser mask; front ×1.6. Jump verified. |
 | M2b | 2026-10-30 | 6th session: reactive registry + 5 reactive types + Cradle echo content (see §3). tsc clean, browser-verified except phase expiry. Saved at $0.27 left. |
 | M3a-1 | 2026-10-30 | 7th session (chat h1YhUrArccr) built the Sundered Monolith (see §3) but ran out of credits right after pushing `v0/echo-m3a`, so it never reached `main` and these docs weren't updated. 8th session: tsc clean, fast-forwarded `main`, updated docs. |
 | M3a-2 | 2026-10-30 | 8th session: Hall of Echoes (see §3). tsc clean, browser-verified. |
 | parallel | 2026-10-30 | 9th session: switched to two chats in parallel. `docs/coordination.md` (lanes, file ownership, contracts, saving, discussion, requests, start prompts), `docs/lane-a.md`, `docs/lane-b.md`; contracts as types in `gameplay/ids.ts`, `core/events.ts`, `ui/store.ts`. Further status goes to the lane files. |
+| Lane A | 2026-10-30/31 | M3a-3 Vale + scatter + particles, M3a-4 regions, M3b bridge / works / undervault / spire, M3c puzzles, M3d fragments / secrets / Heart Key / finale. Several chats ran out mid-step; their auto-commits were recovered each time. Per-step log: `docs/lane-a.md`. |
+| Lane B | 2026-10-30/31 | M3d content + progression, M4 audio, M5a title / intro / pause tabs / end screen, M5b touch + auto quality. From 2026-10-31 there was no Chat B: Chat A finished Lane B. Per-step log: `docs/lane-b.md`. |
+| M6 | 2026-10-31 | Test pass: slope limit, Monolith collider push and camera pull-in verified; draw calls per preset measured; production build built and served (HTTP 200, all chunks, security headers). Polish: pinch zoom on the touch look pad (`Input.addZoom`), Settings "Performance stats" switch. README deliverables (install, controls, walkthrough, graphics settings, feature checklist, limitations). Parallel mode ended; status folded back here. tsc clean. |

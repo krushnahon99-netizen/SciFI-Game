@@ -1,5 +1,8 @@
 # Coordination — two chats in parallel (PROJECT ECHO)
 
+> **Parallel mode ended on 2026-10-31 with M6.** This file is kept as history only: AGENTS.md §0 and §7 apply
+> again, and one chat works on the whole project. The lane files are now the as-built notes per system.
+
 > Read this right after `AGENTS.md`. While parallel mode is on, this file **overrides AGENTS.md §0 step 5 and §7**
 > (status and saving). The two chats can't see each other: this file on `main` is their only link.
 

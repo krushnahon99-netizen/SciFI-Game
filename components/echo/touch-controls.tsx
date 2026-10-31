@@ -21,6 +21,8 @@ const DEAD_ZONE = 0.12
 const RUN_AT = 0.9
 /** Finger travel is coarser than a mouse, so look a little faster per pixel. */
 const LOOK_SCALE = 1.6
+/** Wheel notches per pixel of pinch spread (fingers apart = closer). */
+const PINCH_SCALE = 0.025
 
 interface Track {
   id: number
@@ -178,12 +180,19 @@ function Stick({ input }: { input: Input }) {
   )
 }
 
-/** Right half: one finger drags the camera. */
+/** Right half: one finger drags the camera, two fingers pinch to zoom. */
 function LookPad({ input }: { input: Input }) {
-  const track = useRef<Track | null>(null)
+  const fingers = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef(0)
+
+  const spread = () => {
+    const [a, b] = [...fingers.current.values()]
+    return Math.hypot(a.x - b.x, a.y - b.y)
+  }
 
   const end = (event: PointerEvent<HTMLDivElement>) => {
-    if (track.current?.id === event.pointerId) track.current = null
+    fingers.current.delete(event.pointerId)
+    pinch.current = fingers.current.size === 2 ? spread() : 0
   }
 
   return (
@@ -191,16 +200,25 @@ function LookPad({ input }: { input: Input }) {
       aria-hidden="true"
       className="pointer-events-auto absolute inset-y-0 right-0 w-1/2"
       onPointerDown={(event) => {
-        if (track.current) return
-        track.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+        if (fingers.current.size >= 2) return
+        fingers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
         capture(event.currentTarget, event.pointerId)
+        if (fingers.current.size === 2) pinch.current = spread()
       }}
       onPointerMove={(event) => {
-        const look = track.current
-        if (!look || look.id !== event.pointerId) return
-        input.addLook((event.clientX - look.x) * LOOK_SCALE, (event.clientY - look.y) * LOOK_SCALE)
-        look.x = event.clientX
-        look.y = event.clientY
+        const finger = fingers.current.get(event.pointerId)
+        if (!finger) return
+        const dx = event.clientX - finger.x
+        const dy = event.clientY - finger.y
+        finger.x = event.clientX
+        finger.y = event.clientY
+        if (fingers.current.size === 1) {
+          input.addLook(dx * LOOK_SCALE, dy * LOOK_SCALE)
+          return
+        }
+        const next = spread()
+        input.addZoom((pinch.current - next) * PINCH_SCALE)
+        pinch.current = next
       }}
       onPointerUp={end}
       onPointerCancel={end}

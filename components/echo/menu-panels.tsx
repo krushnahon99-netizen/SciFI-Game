@@ -36,6 +36,7 @@ export function SettingsPanel() {
   const renderScale = useUI((state) => state.renderScale)
   const volume = useUI((state) => state.volume)
   const muted = useUI((state) => state.muted)
+  const showPerf = useUI((state) => state.showPerf)
   const volumePercent = Math.round(volume * 100)
 
   return (
@@ -121,6 +122,22 @@ export function SettingsPanel() {
           className="mt-2 w-full accent-primary"
         />
       </label>
+
+      <div className="flex items-center justify-between gap-3" title={SETTINGS_TEXT.perfNote}>
+        <span className={LEGEND} aria-hidden="true">
+          {SETTINGS_TEXT.perfStats}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showPerf}
+          aria-label={SETTINGS_TEXT.perfStats}
+          onClick={() => game?.togglePerf()}
+          className={cn(CHOICE, 'min-w-14 px-3 py-1.5 text-xs', showPerf ? CHOICE_ON : CHOICE_OFF)}
+        >
+          {showPerf ? SETTINGS_TEXT.on : SETTINGS_TEXT.off}
+        </button>
+      </div>
     </div>
   )
 }

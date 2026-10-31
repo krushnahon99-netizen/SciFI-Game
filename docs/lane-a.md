@@ -1,6 +1,8 @@
-# Lane A — world & gameplay: status
+# Lane A — world & gameplay: as-built notes
 
-Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AGENTS.md §4.
+Parallel mode ended with M6 (2026-10-31): status, next steps and the log are in AGENTS.md again. This file keeps the
+detailed as-built notes for the world, player, echo and gameplay systems; update them when you change one.
+Engine notes: AGENTS.md §4.
 
 ## Status
 
@@ -161,13 +163,8 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
 
 ## Next steps
 
-1. **Lane A is complete** (M3a–M3d). Still untested from M1c (low risk): slope limit at the ridge, monolith
-   collider push, camera pull-in.
-2. **Owner, 2026-10-31: there is no Chat B any more.** Chat A continues Lane B from `docs/lane-b.md` "Next steps"
-   (B's files may be edited freely). M5a (end screen, pause tabs) is done (2026-10-31, logged in lane-b.md); next
-   M5b (see lane-b.md "Next steps"), then M6.
-
-If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
+Moved to AGENTS.md §4. Lane A is complete (M3a–M3d); the M1c leftovers (slope limit at the ridge foot, Monolith
+collider push, camera pull-in 5.2 → 0.5 m) were browser-verified in M6.
 
 ## Log
 

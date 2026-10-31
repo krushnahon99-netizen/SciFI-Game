@@ -1,6 +1,7 @@
-# Lane B — systems & UI: status
+# Lane B — systems & UI: as-built notes
 
-Written by Chat B only. Plan and rules: `docs/coordination.md`.
+Parallel mode ended with M6 (2026-10-31): status, next steps and the log are in AGENTS.md again. This file keeps the
+detailed as-built notes for content, progression, audio, UI, touch and quality; update them when you change one.
 
 ## Status
 
@@ -11,7 +12,7 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
 - [x] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
       (M5a-1 by Chat B; M5a-3 and M5a-2 by Chat A)
 - [x] M5b Touch controls (M5b-1), auto-quality + perf overlay polish (M5b-2)
-- [ ] M6 prep (README checklist, known limitations)
+- [x] M6 README checklist, known limitations, touch polish (pinch zoom, Performance stats switch); see AGENTS.md
 
 ## As built (read before touching Lane B code)
 
@@ -116,14 +117,10 @@ write access (as GitHub `tspencer164-5346` had, whose work went to its own repo 
 
 ## Next steps
 
-0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here.** M5a is complete.
-1. **M5b is done** (M5b-1 touch controls, M5b-2 auto-quality + perf overlay). Optional polish, only if cheap: touch
-   users can't open the F3 stats (no key; a tap on the FPS chip could toggle them); touch pinch-to-zoom for the camera.
-2. Then M6 (README checklist, known limitations; fold lane files back into AGENTS.md, end parallel mode).
-4. Not testable yet: footsteps / land / puzzle / discovery cues fire only once Lane A emits those events (M3c / M3d);
-   the M4 check fired them by hand through `__echo.events.emit(...)`.
-
-If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
+Moved to AGENTS.md §4. Lane B is complete. M6 additions: two-finger pinch on the touch `LookPad` zooms the camera
+(`Input.addZoom(steps)`, wheel-notch units, `PINCH_SCALE` 0.025 per px of spread; one finger keeps looking after a
+pinch), and `SettingsPanel` has a "Performance stats" switch (`Game.togglePerf()`, `SETTINGS_TEXT.perfStats`), so
+touch users can open the F3 stats. A tap on the FPS chip was not used: the HUD (z-10) sits under the touch layer (z-20).
 
 ## Log
 

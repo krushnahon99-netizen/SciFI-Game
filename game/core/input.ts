@@ -143,6 +143,11 @@ export class Input {
     this.lookDelta.y += dy
   }
 
+  /** Analog zoom (touch pinch) in wheel-notch units; positive moves the camera away. */
+  addZoom(steps: number) {
+    this.wheel += steps
+  }
+
   /** Hold an action from a named source; the action stays down until every source releases it. */
   press(action: Action, source: string) {
     let set = this.holders.get(action)

@@ -336,6 +336,10 @@ export const SETTINGS_TEXT = {
   renderScale: 'Render scale',
   auto: 'Auto',
   autoNote: 'Starts from your device and lowers detail if the frame rate stays low (dashed: the level in use).',
+  perfStats: 'Performance stats',
+  perfNote: 'Frame rate and renderer statistics in the top-right corner (keyboard: F3).',
+  on: 'On',
+  off: 'Off',
 } as const
 
 /** On-screen touch controls (accessible names). */
@@ -374,6 +378,7 @@ export const CONTROLS: { keyboard: readonly ControlText[]; touch: readonly Contr
   touch: [
     { action: 'Move', keys: 'Left joystick' },
     { action: 'Look', keys: 'Drag on the right side' },
+  { action: 'Zoom', keys: 'Pinch on the right side' },
     { action: 'Echo Pulse', keys: 'Pulse button' },
     { action: 'Jump', keys: 'Jump button' },
     { action: 'Interact', keys: 'Hand button, when shown' },
