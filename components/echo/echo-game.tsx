@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Game } from '@/game/core/Game'
 import { uiStore } from '@/game/ui/store'
 import { BootOverlay } from './boot-overlay'
+import { EndScreen } from './end-screen'
 import { GameContext } from './game-context'
 import { Hud } from './hud'
 import { IntroOverlay } from './intro-overlay'
@@ -70,6 +71,7 @@ export function EchoGame() {
         <TitleScreen onNewJourney={newJourney} />
         <IntroOverlay />
         <PauseMenu />
+      <EndScreen />
         <BootOverlay />
       </main>
     </GameContext.Provider>

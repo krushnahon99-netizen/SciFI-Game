@@ -9,9 +9,11 @@ import { createMountains } from './mountains'
 import { AmbientParticles } from './particles'
 import { Scatter } from './scatter'
 import { createSky } from './sky'
+import { buildDrownedBell } from './structures/bell'
 import { buildBridge, type GlassBridge } from './structures/bridge'
 import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
+import { buildGiant, type SleepingGiant } from './structures/giant'
 import { buildHall, type Hall } from './structures/hall'
 import { buildSpire, type ListeningSpire } from './structures/spire'
 import { buildUndervault, type Undervault } from './structures/undervault'
@@ -41,6 +43,8 @@ export class World {
   readonly undervault: Undervault
   /** Listening Spire handles (barrier, gate point, Listening Stone) for the Heart Key and the finale. */
   readonly spire: ListeningSpire
+  /** The Sleeping Giant (secret): palm anchor + whether a pulse's memory of it is showing. */
+  readonly giant: SleepingGiant
 
   private readonly scatter: Scatter
   private readonly particles: AmbientParticles
@@ -92,6 +96,8 @@ export class World {
     this.works = buildWorks(context)
     this.undervault = buildUndervault(context)
     this.spire = buildSpire(context)
+    this.giant = buildGiant(context)
+    buildDrownedBell(context)
     this.scatter = new Scatter(this.terrain, this.collision)
     this.particles = new AmbientParticles()
     scene.add(this.scatter.root, this.particles.points)

@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { Emitter, GameEvents } from '../core/events'
 import { sharedUniforms } from '../render/shaderChunks'
 import { uiStore } from '../ui/store'
-import { PULSE_DURATION, PULSE_INACTIVE, PULSE_SLOTS, PULSE_SPEED } from './pulseShader'
+import { PLAYER_WAVE, PULSE_INACTIVE, PULSE_SLOTS, type PulseWave } from './pulseShader'
 
 /** Seconds between pulses. */
 export const PULSE_COOLDOWN = 2.5
@@ -60,6 +60,7 @@ export class EchoSystem {
   private nextSlot = 0
   private publishedSteps = -1
   private readonly pulses = sharedUniforms.uEchoPulses.value
+  private readonly waves = sharedUniforms.uEchoWaves.value
   private readonly shellGeometry = new THREE.SphereGeometry(1, 48, 24)
   private readonly shells: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>[] = []
 
@@ -67,7 +68,7 @@ export class EchoSystem {
     scene: THREE.Scene,
     private readonly events: Emitter<GameEvents>,
   ) {
-    for (const pulse of this.pulses) pulse.set(0, 0, 0, PULSE_INACTIVE)
+    this.resetSlots()
     sharedUniforms.uEchoClock.value = 0
     for (let slot = 0; slot < PULSE_SLOTS; slot++) {
       const material = new THREE.ShaderMaterial({
@@ -105,15 +106,26 @@ export class EchoSystem {
     return 1 - this.cooldown / PULSE_COOLDOWN
   }
 
-  /** Sends a pulse from `origin` if charged; returns whether it fired. */
-  trigger(origin: THREE.Vector3): boolean {
-    if (this.cooldown > 0) return false
+  /**
+   * Sends a pulse from `origin` if charged (`force` ignores the cooldown); returns whether it fired. `wave` shapes it
+   * (default: the explorer's pulse).
+   */
+  trigger(origin: THREE.Vector3, options: { wave?: PulseWave; force?: boolean } = {}): boolean {
+    if (this.cooldown > 0 && !options.force) return false
+    const wave = options.wave ?? PLAYER_WAVE
     const slot = this.nextSlot
     this.nextSlot = (slot + 1) % PULSE_SLOTS
     this.pulses[slot].set(origin.x, origin.y, origin.z, this.clockSeconds)
+    this.waves[slot].set(wave.speed, wave.radius)
     this.cooldown = PULSE_COOLDOWN
     this.publishCharge()
-    this.events.emit('pulse', { origin: { x: origin.x, y: origin.y, z: origin.z }, time: this.clockSeconds, slot })
+    this.events.emit('pulse', {
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      time: this.clockSeconds,
+      slot,
+      speed: wave.speed,
+      radius: wave.radius,
+    })
     return true
   }
 
@@ -125,15 +137,17 @@ export class EchoSystem {
     for (let slot = 0; slot < PULSE_SLOTS; slot++) {
       const pulse = this.pulses[slot]
       const shell = this.shells[slot]
+      const wave = this.waves[slot]
       const age = this.clockSeconds - pulse.w
+      const duration = wave.y / wave.x
       const life =
-        age < 0 || age > PULSE_DURATION
+        age < 0 || age > duration
           ? 0
-          : THREE.MathUtils.smoothstep(age, 0, 0.06) * (1 - THREE.MathUtils.smoothstep(age / PULSE_DURATION, 0.35, 1))
+          : THREE.MathUtils.smoothstep(age, 0, 0.06) * (1 - THREE.MathUtils.smoothstep(age / duration, 0.35, 1))
       shell.visible = life > 0.002
       if (!shell.visible) continue
       shell.position.set(pulse.x, pulse.y, pulse.z)
-      shell.scale.setScalar(Math.max(0.05, age * PULSE_SPEED))
+      shell.scale.setScalar(Math.max(0.05, age * wave.x))
       const uniforms = shell.material.uniforms
       uniforms.uOrigin.value.copy(shell.position)
       uniforms.uAge.value = age
@@ -149,7 +163,12 @@ export class EchoSystem {
     }
     this.shells.length = 0
     this.shellGeometry.dispose()
+    this.resetSlots()
+  }
+
+  private resetSlots() {
     for (const pulse of this.pulses) pulse.set(0, 0, 0, PULSE_INACTIVE)
+    for (const wave of this.waves) wave.set(PLAYER_WAVE.speed, PLAYER_WAVE.radius)
   }
 
   private publishCharge() {

@@ -9,6 +9,17 @@ export const PULSE_SPEED = 24
 export const PULSE_RADIUS = 70
 /** Seconds from emission until the wavefront dissolves. */
 export const PULSE_DURATION = PULSE_RADIUS / PULSE_SPEED
+
+/** Shape of one pulse's wave; each slot carries its own (shared uniform `uEchoWaves`). */
+export interface PulseWave {
+  /** Wavefront speed (m/s). */
+  readonly speed: number
+  /** The wave has fully dissolved by this radius (m). */
+  readonly radius: number
+}
+
+/** The explorer's pulse. The finale's world wave (gameplay/finale.ts) is faster and reaches the whole world. */
+export const PLAYER_WAVE: PulseWave = { speed: PULSE_SPEED, radius: PULSE_RADIUS }
 /** Seconds the revealed glyphs stay lit after the wavefront passes a point. */
 export const GLYPH_DURATION = 6
 /** Start time of an unused slot: far enough in the past that every shader term evaluates to zero. */
@@ -19,10 +30,12 @@ const f = (n: number) => n.toFixed(4)
 /** Needs `uEchoNoise` and `uEchoTime` declared first. Provides `echoPulseEmission(worldPos, worldNormal)`. */
 export const PULSE_GLSL = /* glsl */ `
 uniform vec4 uEchoPulses[${PULSE_SLOTS}];
+// Per slot: wavefront speed (x, m/s) and dissolve radius (y, m).
+uniform vec2 uEchoWaves[${PULSE_SLOTS}];
 uniform float uEchoClock;
 
-const float ECHO_PULSE_SPEED = ${f(PULSE_SPEED)};
-const float ECHO_PULSE_RADIUS = ${f(PULSE_RADIUS)};
+// Faster waves get a proportionally wider front, so the finale's band still reads from far away.
+const float ECHO_REF_SPEED = ${f(PULSE_SPEED)};
 const float ECHO_GLYPH_DURATION = ${f(GLYPH_DURATION)};
 const vec3 ECHO_PULSE_TINT = vec3(0.32, 0.86, 1.0);
 // More saturated than the front so the lit glyphs stay cyan instead of clipping to white.
@@ -76,13 +89,15 @@ vec3 echoPulseEmission(vec3 p, vec3 n) {
   float ignite = 0.0;
   for (int i = 0; i < ${PULSE_SLOTS}; i++) {
     vec4 pulse = uEchoPulses[i];
+    vec2 wave = uEchoWaves[i];
     float age = uEchoClock - pulse.w;
     float dist = distance(p, pulse.xyz);
-    float x = dist - age * ECHO_PULSE_SPEED;
-    float life = 1.0 - smoothstep(0.45, 1.0, age * ECHO_PULSE_SPEED / ECHO_PULSE_RADIUS);
-    front += exp(-x * x * (x > 0.0 ? 2.5 : 0.35)) * life;
-    float since = -x / ECHO_PULSE_SPEED;
-    float range = 1.0 - smoothstep(0.75, 1.0, dist / ECHO_PULSE_RADIUS);
+    float x = dist - age * wave.x;
+    float life = 1.0 - smoothstep(0.45, 1.0, age * wave.x / wave.y);
+    float sharp = ECHO_REF_SPEED / wave.x;
+    front += exp(-x * x * (x > 0.0 ? 2.5 : 0.35) * sharp * sharp) * life;
+    float since = -x / wave.x;
+    float range = 1.0 - smoothstep(0.75, 1.0, dist / wave.y);
     float shown = smoothstep(0.0, 0.2, since)
                 * (1.0 - smoothstep(ECHO_GLYPH_DURATION * 0.45, ECHO_GLYPH_DURATION, since)) * range;
     reveal = max(reveal, shown);

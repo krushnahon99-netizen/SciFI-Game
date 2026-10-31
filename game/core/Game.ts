@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { AudioEngine } from '../audio/audio'
 import { EchoSystem } from '../echo/echoSystem'
 import { ReactiveRegistry } from '../echo/reactive'
+import { FINALE_WAVE, Finale } from '../gameplay/finale'
 import { Fragments } from '../gameplay/fragments'
 import type { RegionId } from '../gameplay/ids'
 import { Interactables } from '../gameplay/interactables'
@@ -57,6 +58,8 @@ export class Game {
   /** The ten memory fragments; recovered ones (from `progression`) stay hidden. */
   readonly fragments: Fragments
   readonly secrets: Secrets
+  /** Heart Key → Spire barrier → Listening Stone finale; restored from `progression` when built. */
+  readonly finale: Finale
 
   private readonly settings: Settings
   private readonly pulseOrigin = new THREE.Vector3()
@@ -120,7 +123,12 @@ export class Game {
       this.events,
       this.progression,
     )
-    this.secrets = new Secrets(this.events, this.progression)
+    this.secrets = new Secrets(this.events, this.progression, this.interactables, this.world.giant)
+    this.finale = new Finale(this.world, this.events, this.progression, this.interactables, {
+      shot: (position, target, rate) => this.cameraRig.setCinematic(position, target, rate),
+      pulse: (origin) => this.echo.trigger(origin, { wave: FINALE_WAVE, force: true }),
+    })
+    this.events.on('endingStart', () => this.beginEnding())
 
     this.events.on('pointerLock', ({ locked }) => {
       uiStore.setState({ pointerLocked: locked })
@@ -178,6 +186,26 @@ export class Game {
     if (this.phase !== 'intro') return
     this.intro?.finish()
     this.input.requestPointerLock()
+  }
+
+  /** End screen → free roam on the explorer's camera. Call from a click so the browser allows capturing the mouse. */
+  keepExploring() {
+    if (this.phase !== 'ending') return
+    this.cameraRig.clearCinematic(CONTINUE_BLEND_RATE)
+    this.setPhase('playing')
+    this.input.requestPointerLock()
+  }
+
+  /** Pause menu / end screen → the title over the live world (saved first); Continue resumes at the checkpoint. */
+  returnToTitle() {
+    if (this.phase !== 'paused' && this.phase !== 'ending') return
+    this.finale.cancel()
+    this.progression.save()
+    const shot = titleShot((x, z) => this.world.heightAt(x, z))
+    this.cameraRig.setCinematic(shot.position, shot.target, CONTINUE_BLEND_RATE)
+    uiStore.setState({ canContinue: true })
+    this.setPhase('title')
+    this.input.exitPointerLock()
   }
 
   pause() {
@@ -311,8 +339,9 @@ export class Game {
     this.time += dt
     this.handleSystemActions()
     const playing = this.phase === 'playing'
-    // The world keeps moving under the intro (its first pulse must spread); only 'playing' takes input.
-    const live = playing || this.phase === 'intro'
+    // The world keeps moving under the intro (its first pulse must spread) and the end screen (the finale wave is still
+    // travelling); only 'playing' takes input.
+    const live = playing || this.phase === 'intro' || this.phase === 'ending'
     if (playing) this.progression.update(dt)
     if (this.phase === 'intro') this.intro?.update(dt)
     if (playing && !this.cameraRig.inCinematic && this.input.wasPressed('pulse')) this.emitPulse()
@@ -333,6 +362,7 @@ export class Game {
       if (playing) this.regions.update(this.player.position)
     }
     this.puzzles.update(this.echo.clock, live ? dt : 0, this.player.position)
+    this.finale.update(live ? dt : 0)
     this.fragments.update(this.echo.clock, live ? dt : 0, this.time)
     const reach = playing && !this.spectator && !this.cameraRig.inCinematic ? this.player.position : null
     this.interactables.update(reach, reach !== null && this.input.wasPressed('interact'))
@@ -340,6 +370,12 @@ export class Game {
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
     this.audio.update(dt, this.camera)
+  }
+
+  /** The finale wave is out: the end screen takes over while the camera holds the wide shot. */
+  private beginEnding() {
+    this.setPhase('ending')
+    this.input.exitPointerLock()
   }
 
   /** Fell into the chasm: back to the current region's spawn point, camera facing on. */

@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { PULSE_GLSL, PULSE_INACTIVE, PULSE_SLOTS } from '../echo/pulseShader'
+import { PULSE_GLSL, PULSE_INACTIVE, PULSE_RADIUS, PULSE_SLOTS, PULSE_SPEED } from '../echo/pulseShader'
 import { SUN_DIRECTION, TERRAIN_UV_SCALE } from '../world/layout'
 
 /** Exponential height-fog falloff per metre (density = fogDensity · e^(−falloff · y)). */
@@ -103,6 +103,8 @@ export const sharedUniforms = {
   uEchoClock: { value: 0 },
   /** Per pulse slot: emitter position (xyz) + start time on uEchoClock (w). */
   uEchoPulses: { value: Array.from({ length: PULSE_SLOTS }, () => new THREE.Vector4(0, 0, 0, PULSE_INACTIVE)) },
+  /** Per pulse slot: wavefront speed (x) and dissolve radius (y); set by EchoSystem with each pulse. */
+  uEchoWaves: { value: Array.from({ length: PULSE_SLOTS }, () => new THREE.Vector2(PULSE_SPEED, PULSE_RADIUS)) },
   uEchoNoise: { value: null as THREE.Texture | null },
   uTerrainShadow: { value: null as THREE.Texture | null },
   uTerrainSplat: { value: null as THREE.Texture | null },

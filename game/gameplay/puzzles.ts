@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { Emitter, GameEvents } from '../core/events'
 import { GhostScene } from '../echo/ghosts'
-import { PULSE_SPEED } from '../echo/pulseShader'
+import { PLAYER_WAVE, PULSE_SPEED } from '../echo/pulseShader'
 import { BRIDGE, WORKS } from '../world/layout'
 import type { GlassBridge } from '../world/structures/bridge'
 import type { Hall } from '../world/structures/hall'
@@ -58,7 +58,7 @@ class ChoirSequence {
   private replayEnd = -Infinity
   private nextVoice = CHOIR_ORDER.length
   private silencedAt = -Infinity
-  private readonly pulse = { origin: new THREE.Vector3(), time: 0 }
+  private readonly pulse = { origin: new THREE.Vector3(), time: 0, ...PLAYER_WAVE }
   private readonly unsubscribe: () => void
 
   constructor(

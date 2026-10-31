@@ -11,8 +11,11 @@ export interface GameEvents {
   quality: { level: QualityLevel }
   pointerLock: { locked: boolean }
   lookMode: { mode: LookMode }
-  /** An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot. */
-  pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number }
+  /**
+   * An echo pulse left its emitter. `time` is on the EchoSystem play clock; `slot` is its shader slot; `speed` (m/s)
+   * and `radius` (m) shape its wave (the explorer's pulse, or the finale's world wave).
+   */
+  pulse: { origin: { x: number; y: number; z: number }; time: number; slot: number; speed: number; radius: number }
   /** The wavefront reached a reactive object (echo/reactive.ts); `time` is the arrival on the play clock. */
   reactiveHit: { kind: ReactiveKind; position: { x: number; y: number; z: number }; time: number }
 
