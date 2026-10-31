@@ -73,9 +73,9 @@ export function sampleTerrain(x: number, z: number, out: TerrainSample = scratch
   h = h * (1 - 0.5 * bowl) - VALE.depth * bowl
   const vale = 1 - ss(0.55, 1.05, dv)
 
-  // Conduit Works plateau.
+  // Conduit Works plateau: dead flat around the hub and the grid nodes so their plinths sit level.
   const dw = Math.hypot(x - WORKS.x, z - WORKS.z) / WORKS.radius
-  h = lerp(h, WORKS.height + 0.25 * noise(x / 7, z / 7), 1 - ss(0.82, 1.2, dw))
+  h = lerp(h, WORKS.height + 0.25 * noise(x / 7, z / 7) * ss(0.55, 0.8, dw), 1 - ss(0.82, 1.2, dw))
   const ash = (1 - ss(0.7, 1.45, dw)) * (0.75 + 0.25 * noise(x / 11 + 9, z / 11))
 
   // Drowned Bell crater (bowl + raised lip).

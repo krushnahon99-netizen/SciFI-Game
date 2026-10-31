@@ -3,7 +3,7 @@ import { CrystalCluster } from '../../echo/crystals'
 import { GhostScene } from '../../echo/ghosts'
 import { type PhasePart, PhaseObject } from '../../echo/phase'
 import type { Collision } from '../../physics/collision'
-import { block, mergeParts } from '../geometry'
+import { Batch, block, mergeParts } from '../geometry'
 import { BRIDGE, CHASM } from '../layout'
 import { createEnergyMaterial, createStoneMaterial } from '../materials'
 import { mulberry32 } from '../noise'
@@ -54,41 +54,6 @@ interface LandingSpec {
   /** The west gate still stands (lintel and beacon); the east one has fallen. */
   intact: boolean
   seed: number
-}
-
-/** Static parts batched per material: one draw call per material and group. */
-class Batch {
-  private readonly buckets = new Map<THREE.Material, THREE.BufferGeometry[]>()
-
-  /** Takes ownership of `geometry`; rotations apply in three's default XYZ Euler order. */
-  add(
-    material: THREE.Material,
-    geometry: THREE.BufferGeometry,
-    x: number,
-    y: number,
-    z: number,
-    rotation: { x?: number; y?: number; z?: number } = {},
-  ) {
-    if (rotation.z) geometry.rotateZ(rotation.z)
-    if (rotation.y) geometry.rotateY(rotation.y)
-    if (rotation.x) geometry.rotateX(rotation.x)
-    geometry.translate(x, y, z)
-    const bucket = this.buckets.get(material)
-    if (bucket) bucket.push(geometry)
-    else this.buckets.set(material, [geometry])
-  }
-
-  build(scene: THREE.Scene, name: string, unlit: THREE.Material) {
-    const group = new THREE.Group()
-    group.name = name
-    for (const [material, parts] of this.buckets) {
-      const mesh = new THREE.Mesh(mergeParts(parts, name), material)
-      mesh.castShadow = material !== unlit
-      mesh.receiveShadow = material !== unlit
-      group.add(mesh)
-    }
-    scene.add(group)
-  }
 }
 
 /** Dais centre for a landing: just landward of its gate block. */

@@ -201,7 +201,37 @@ export const BRIDGE = { x: 26, z: -38, halfSpan: 18, padHeight: 4, padRadius: 5 
 export const FALL_LIMIT = CHASM.floor + 24
 
 export const WORKS = { x: 150, z: -150, radius: 48, height: 9 }
-export const UNDERVAULT = { x: 176, z: -178 }
+
+/**
+ * The Undervault's vault house: a roofless walled bunker NE of the Works hub whose sealed door (the Dormant Grid gate)
+ * faces the hub; the sunken chamber inside comes with M3b-3. Interior half-sizes, wall thickness and height; `yaw`
+ * turns the vault's local +z (the door side) toward the hub.
+ */
+export const UNDERVAULT = { x: 170, z: -171 }
+export const VAULT = {
+  halfWidth: 9.5,
+  halfDepth: 9.5,
+  wall: 1.4,
+  height: 8,
+  yaw: Math.atan2(WORKS.x - UNDERVAULT.x, WORKS.z - UNDERVAULT.z),
+}
+
+/** World (x, z) of a point in the vault's local frame (+z toward the hub), matching a mesh rotated by `VAULT.yaw`. */
+export function vaultPoint(lx: number, lz: number): { x: number; z: number } {
+  const s = Math.sin(VAULT.yaw)
+  const c = Math.cos(VAULT.yaw)
+  return { x: UNDERVAULT.x + lx * c + lz * s, z: UNDERVAULT.z - lx * s + lz * c }
+}
+
+/** Where the Works trail meets the sealed vault door. */
+const VAULT_APPROACH = vaultPoint(0, VAULT.halfDepth + VAULT.wall + 3)
+
+/** Dormant Grid power nodes (plinth centres) around the hub, 26–48 m apart: no single pulse charges two. */
+export const GRID_NODES: readonly Point2[] = [
+  [126.4, -154.2],
+  [143.8, -173.2],
+  [171.7, -146.2],
+]
 
 /** Listening Spire hill; the spiral ramp is the only way up. Angles are atan2(z − cz, x − cx). */
 export const SPIRE = {
@@ -238,7 +268,7 @@ export const TRAILS: readonly Polyline[] = [
   new Polyline([[-140, -24], [-100, -40], [-56, -46], [-18, -42], [6, -38]]),
   new Polyline([[44, -38], [66, -58], [96, -92], [124, -124], [150, -150]]),
   new Polyline([[150, -150], [162, -110], [168, -60], [164, -14]]),
-  new Polyline([[150, -150], [176, -178]]),
+  new Polyline([[150, -150], [VAULT_APPROACH.x, VAULT_APPROACH.z]]),
 ]
 
 // ---------------------------------------------------------------- region volumes + spawn points (gameplay/regions.ts)
@@ -258,7 +288,7 @@ export interface RegionArea {
  * their surroundings (Undervault inside the Works). Gaps between areas keep the last region (see regions.ts).
  */
 export const REGION_AREAS: readonly RegionArea[] = [
-  { id: 'undervault', shape: { kind: 'circle', x: UNDERVAULT.x, z: UNDERVAULT.z, radius: 18 } },
+  { id: 'undervault', shape: { kind: 'circle', x: UNDERVAULT.x, z: UNDERVAULT.z, radius: VAULT.halfWidth - 0.5 } },
   { id: 'hall', shape: { kind: 'box', x: HALL.x, z: HALL.z, halfX: HALL.halfWidth + 6, halfZ: HALL.halfLength } },
   // Only the stretch north of the ridge around the bridge: the chasm's tip is buried in the ridge above the Cradle.
   {
@@ -283,9 +313,11 @@ function spawnFacing(x: number, z: number, tx: number, tz: number): SpawnPoint {
   return { x, z, yaw: Math.atan2(x - tx, z - tz) }
 }
 
+const UNDERVAULT_SPAWN = vaultPoint(0, VAULT.halfDepth - 2.5)
+
 /**
  * Respawn point per region (new game, load, falls): on the trail where the player arrives, inside the region's
- * volume. The Undervault one is provisional until M3b builds the chamber.
+ * volume. The Undervault one (just inside the vault door) is provisional until M3b-3 carves the chamber.
  */
 export const REGION_SPAWNS: Readonly<Record<RegionId, SpawnPoint>> = {
   cradle: SPAWN,
@@ -293,6 +325,6 @@ export const REGION_SPAWNS: Readonly<Record<RegionId, SpawnPoint>> = {
   vale: spawnFacing(-84, 34, CHOIR.x, CHOIR.z),
   chasm: spawnFacing(0, -39, BRIDGE.x, BRIDGE.z),
   works: spawnFacing(118, -117, WORKS.x, WORKS.z),
-  undervault: spawnFacing(168, -169.4, UNDERVAULT.x, UNDERVAULT.z),
+  undervault: spawnFacing(UNDERVAULT_SPAWN.x, UNDERVAULT_SPAWN.z, UNDERVAULT.x, UNDERVAULT.z),
   spire: spawnFacing(165.4, -30, SPIRE.x, SPIRE.z),
 }

@@ -107,6 +107,31 @@ export function createStoneMaterial(
   })
 }
 
+// Weathered alloy: noise stretched vertically on the side faces reads as grime streaks; oxidised patches go matte.
+const METAL_COLOR = /* glsl */ `
+  vec3 mW = abs(normalize(vWorldNormal)) + 1e-3;
+  mW /= mW.x + mW.y + mW.z;
+  vec4 mT = texture(uEchoNoise, vWorldPos.zy * vec2(0.3, 0.07)) * mW.x
+          + texture(uEchoNoise, vWorldPos.xz * 0.17 + 0.5) * mW.y
+          + texture(uEchoNoise, vWorldPos.xy * vec2(0.3, 0.07) + 0.25) * mW.z;
+  float echoRust = smoothstep(0.55, 0.8, mT.r + mT.a * 0.25);
+  vec3 mRustColor = vec3(0.34, 0.19, 0.11) * (0.8 + 0.4 * mT.b);
+  diffuseColor.rgb = mix(diffuseColor.rgb * (0.72 + 0.4 * mT.g), mRustColor, echoRust);
+  float echoBump = mT.b * 0.02 + echoRust * 0.05;
+`
+
+/** Alien alloy of the Conduit Works: grime streaks and rust patches over a muted base colour. */
+export function createMetalMaterial(color: THREE.ColorRepresentation = '#626b6c'): THREE.MeshStandardMaterial {
+  const material = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.3 })
+  material.name = 'echo.metal'
+  return patchWorldMaterial(material, {
+    key: 'metal',
+    color: METAL_COLOR,
+    roughness: 'roughnessFactor = clamp(mix(roughnessFactor * (0.8 + 0.4 * mT.g), 0.95, echoRust), 0.0, 1.0);',
+    normal: 'normal = echoPerturbNormal(-vViewPosition, normal, echoBump);',
+  })
+}
+
 // Faceted crystal: slow bands of light drifting up through it plus a bright rim at grazing angles.
 const CRYSTAL_GLOW = /* glsl */ `
   float cBand = 0.5 + 0.5 * sin(vWorldPos.y * 0.7 - uEchoTime * 1.3 + vWorldPos.x * 0.21 + vWorldPos.z * 0.17);
