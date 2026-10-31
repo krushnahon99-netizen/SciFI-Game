@@ -5,18 +5,8 @@ import { useState } from 'react'
 import type { Game } from '@/game/core/Game'
 import { TITLE_SCREEN } from '@/game/gameplay/content'
 import { useGame } from './game-context'
+import { MENU_DANGER as DANGER, MENU_PRIMARY as PRIMARY, MENU_SECONDARY as SECONDARY, dropFocus } from './menu'
 import { useUI } from './use-ui'
-
-const BUTTON =
-  'w-full rounded-md py-3 text-xs uppercase tracking-[0.3em] transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
-const PRIMARY = `${BUTTON} bg-primary font-medium text-primary-foreground hover:opacity-90`
-const SECONDARY = `${BUTTON} border border-foreground/20 bg-background/35 text-foreground/85 backdrop-blur-sm hover:border-foreground/45 hover:text-foreground`
-const DANGER = `${BUTTON} border border-destructive/60 text-destructive hover:bg-destructive/10`
-
-function dropFocus() {
-  // Keeps Space / Enter for the game instead of re-pressing the button that started it.
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
-}
 
 /** Title over the live world: Continue (with a save) or Begin, and New journey behind a confirmation. */
 export function TitleScreen({ onNewJourney }: { onNewJourney: () => void }) {

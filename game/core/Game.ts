@@ -172,8 +172,7 @@ export class Game {
 
   /** Opens on the title screen over the live world; `intro` goes straight to the intro (new journey). */
   start(options: { intro?: boolean } = {}) {
-    const shot = titleShot((x, z) => this.world.heightAt(x, z))
-    this.cameraRig.setCinematic(shot.position, shot.target, TITLE_SHOT_RATE)
+    this.showTitleShot()
     uiStore.setState({ canContinue: Progression.hasSave() })
     if (options.intro) this.beginIntro()
     else this.setPhase('title')
@@ -210,6 +209,17 @@ export class Game {
     uiStore.setState({ cinematic: false })
     this.setPhase('playing')
     this.input.requestPointerLock()
+  }
+
+  /** Pause menu / end screen → the title over the live world (saved first); Continue resumes at the checkpoint. */
+  returnToTitle() {
+    if ((this.phase !== 'paused' && this.phase !== 'ending') || this.finale.running) return
+    this.progression.save()
+    this.spectator = null
+    this.showTitleShot()
+    uiStore.setState({ cinematic: false, canContinue: Progression.hasSave() })
+    this.setPhase('title')
+    this.input.exitPointerLock()
   }
 
   pause() {
@@ -286,6 +296,11 @@ export class Game {
     this.input.lockOnClick = next === 'playing'
     uiStore.setState({ phase: next })
     this.events.emit('phase', { from, to: next })
+  }
+
+  private showTitleShot() {
+    const shot = titleShot((x, z) => this.world.heightAt(x, z))
+    this.cameraRig.setCinematic(shot.position, shot.target, TITLE_SHOT_RATE)
   }
 
   private beginIntro() {

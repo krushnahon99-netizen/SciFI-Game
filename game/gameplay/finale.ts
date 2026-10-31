@@ -105,6 +105,11 @@ export class Finale {
     }
   }
 
+  /** The Stone was touched and the sequence hasn't reached `endingStart` yet. */
+  get running(): boolean {
+    return this.elapsed >= 0 && !this.ended
+  }
+
   /** `dt` = play time (0 while paused); `time` = wall-clock seconds for the socketed Heart's idle motion. */
   update(dt: number, time: number) {
     const heart = this.socketed
