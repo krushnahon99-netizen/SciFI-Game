@@ -30,6 +30,8 @@ export type Collider = CylinderCollider | BoxCollider
 
 const CELL = 16
 const HASH_OFFSET = 512
+/** A low collider supports a character whose centre is within this fraction of its radius outside the top. */
+const STEP_REACH = 0.5
 const cellKey = (ix: number, iz: number) => (ix + HASH_OFFSET) * 1024 + (iz + HASH_OFFSET)
 
 /** Closest-feature result in the XZ plane: outward normal and signed distance (negative = inside). */
@@ -100,6 +102,15 @@ export class Collision {
     return out.set(-hx, 2, -hz).normalize()
   }
 
+  /** Highest top of the enabled colliders whose footprint contains (x, z), or -Infinity (spawn placement). */
+  topAt(x: number, z: number): number {
+    let top = -Infinity
+    for (const c of this.gather(x, z, 0)) {
+      if (probeCollider(c, x, z).distance < 0) top = Math.max(top, c.maxY)
+    }
+    return top
+  }
+
   addCylinder(x: number, z: number, radius: number, minY: number, maxY: number): CylinderCollider {
     const collider: CylinderCollider = { kind: 'cylinder', x, z, radius, minY, maxY, enabled: true, mark: 0 }
     this.insert(collider, radius)
@@ -145,11 +156,10 @@ export class Collision {
         const depth = radius - hit.distance
         if (depth <= 0) continue
         if (position.y >= c.maxY - stepUp) {
-          if (hit.distance < 0) {
-            support = Math.max(support, c.maxY)
-            continue
-          }
-          if (position.y >= c.maxY - 0.05) continue
+          // Low enough to step onto: no push. It carries the character once the centre is over (or within
+          // STEP_REACH of) its top, so walking into a step climbs it and walking off an edge drops cleanly.
+          if (hit.distance < radius * STEP_REACH) support = Math.max(support, c.maxY)
+          continue
         }
         position.x += hit.nx * depth
         position.z += hit.nz * depth

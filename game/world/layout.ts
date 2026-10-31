@@ -204,8 +204,9 @@ export const WORKS = { x: 150, z: -150, radius: 48, height: 9 }
 
 /**
  * The Undervault's vault house: a roofless walled bunker NE of the Works hub whose sealed door (the Dormant Grid gate)
- * faces the hub; the sunken chamber inside comes with M3b-3. Interior half-sizes, wall thickness and height; `yaw`
- * turns the vault's local +z (the door side) toward the hub.
+ * faces the hub; the sunken chamber inside is structures/undervault.ts (terrain.ts carves its pit). Interior
+ * half-sizes (the carve assumes a square), wall thickness and height; `yaw` turns the vault's local +z (the door side)
+ * toward the hub.
  */
 export const UNDERVAULT = { x: 170, z: -171 }
 export const VAULT = {
@@ -222,6 +223,22 @@ export function vaultPoint(lx: number, lz: number): { x: number; z: number } {
   const c = Math.cos(VAULT.yaw)
   return { x: UNDERVAULT.x + lx * c + lz * s, z: UNDERVAULT.z - lx * s + lz * c }
 }
+
+/** Inverse of `vaultPoint`: the vault-local (x, z) of a world point. */
+export function vaultLocal(x: number, z: number, out = { x: 0, z: 0 }): { x: number; z: number } {
+  const s = Math.sin(VAULT.yaw)
+  const c = Math.cos(VAULT.yaw)
+  const dx = x - UNDERVAULT.x
+  const dz = z - UNDERVAULT.z
+  out.x = dx * c - dz * s
+  out.z = dx * s + dz * c
+  return out
+}
+
+/** Just outside the vault door, clear of the pit carved under it: the door threshold's level is measured here. */
+export const VAULT_THRESHOLD = vaultPoint(0, VAULT.halfDepth + VAULT.wall + 1.4)
+/** Floor of the Undervault's sunken chamber (absolute; the plateau around the vault is at WORKS.height). */
+export const UNDERVAULT_FLOOR = WORKS.height - 6
 
 /** Where the Works trail meets the sealed vault door. */
 const VAULT_APPROACH = vaultPoint(0, VAULT.halfDepth + VAULT.wall + 3)
@@ -313,11 +330,11 @@ function spawnFacing(x: number, z: number, tx: number, tz: number): SpawnPoint {
   return { x, z, yaw: Math.atan2(x - tx, z - tz) }
 }
 
-const UNDERVAULT_SPAWN = vaultPoint(0, VAULT.halfDepth - 2.5)
+const UNDERVAULT_SPAWN = vaultPoint(0, VAULT.halfDepth - 1.3)
 
 /**
  * Respawn point per region (new game, load, falls): on the trail where the player arrives, inside the region's
- * volume. The Undervault one (just inside the vault door) is provisional until M3b-3 carves the chamber.
+ * volume. The Undervault one is on the landing inside the vault door (`Player.teleport` stands on collider tops).
  */
 export const REGION_SPAWNS: Readonly<Record<RegionId, SpawnPoint>> = {
   cradle: SPAWN,

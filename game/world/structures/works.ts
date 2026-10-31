@@ -4,7 +4,7 @@ import { GhostScene } from '../../echo/ghosts'
 import { PastStateOverlay } from '../../echo/pastState'
 import type { BoxCollider, Collision } from '../../physics/collision'
 import { Batch, block, mergeParts } from '../geometry'
-import { GRID_NODES, type Point2, UNDERVAULT, VAULT, vaultPoint, WORKS } from '../layout'
+import { GRID_NODES, type Point2, UNDERVAULT, UNDERVAULT_FLOOR, VAULT, VAULT_THRESHOLD, vaultPoint, WORKS } from '../layout'
 import { createEnergyMaterial, createMetalMaterial, createStoneMaterial } from '../materials'
 import { mulberry32 } from '../noise'
 import type { Animator, StructureContext } from './context'
@@ -166,10 +166,9 @@ export function buildWorks(context: StructureContext): ConduitWorks {
     power: createEnergyMaterial(AMBER, DORMANT),
   }
   const floor = collision.groundHeight(WORKS.x, WORKS.z)
-  const front = VAULT.halfDepth + VAULT.wall / 2
-  const doorAt = vaultPoint(0, front)
-  const vaultBase = collision.groundHeight(doorAt.x, doorAt.z)
-  const threshold = vaultPoint(0, front + VAULT.wall / 2 + 1.4)
+  // Measured outside the door: the Undervault pit is carved under the door itself.
+  const threshold = VAULT_THRESHOLD
+  const vaultBase = collision.groundHeight(threshold.x, threshold.z)
   const state = { power: 0 }
 
   const batch = new Batch()
@@ -439,20 +438,8 @@ function buildVault({ scene, collision, animate }: StructureContext, m: Material
   const outer = halfWidth + wall
   const front = halfDepth + wall / 2
   const top = base + height
-  let low = base
-  for (const [sx, sz] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-    [0, -1],
-    [-1, 0],
-    [1, 0],
-  ]) {
-    const p = vaultPoint(sx * outer, sz * (halfDepth + wall))
-    low = Math.min(low, collision.groundHeight(p.x, p.z))
-  }
-  const footing = low - 0.8
+  // Down past the Undervault floor: the pit's edge is carved under the walls.
+  const footing = UNDERVAULT_FLOOR - 1
 
   const group = new THREE.Group()
   group.name = 'works.vault'

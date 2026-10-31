@@ -64,8 +64,9 @@ export class Player {
     return Math.hypot(this.velocity.x, this.velocity.z)
   }
 
+  /** Feet on the ground, or on the collider top under (x, z) when there is one (e.g. the Undervault landing). */
   teleport(x: number, z: number, yaw = this.facing) {
-    this.position.set(x, this.collision.groundHeight(x, z), z)
+    this.position.set(x, Math.max(this.collision.groundHeight(x, z), this.collision.topAt(x, z)), z)
     this.velocity.set(0, 0, 0)
     this.facing = yaw
     this.grounded = true

@@ -28,6 +28,8 @@ export interface CrystalClusterSpec {
   color?: THREE.ColorRepresentation
   /** 'shard' (default): double-pointed spike. 'prism': hexagonal column with a pointed tip. */
   shape?: 'shard' | 'prism'
+  /** Ground height under every shard (e.g. a structure floor); default: the terrain under each one. */
+  baseY?: number
 }
 
 /** Hexagonal column (-0.2 … 2.0 like the shard) so the climbing band and colliders fit both shapes. */
@@ -92,7 +94,7 @@ export class CrystalCluster implements Reactive {
       const r = i === 0 ? 0 : (0.3 + 0.7 * Math.sqrt(random())) * spec.spread
       const x = spec.x + Math.cos(angle) * r
       const z = spec.z + Math.sin(angle) * r
-      const ground = collision.groundHeight(x, z)
+      const ground = spec.baseY ?? collision.groundHeight(x, z)
       const s = size * (i === 0 ? 1.5 : 0.55 + random() * 0.8)
       // Lean outward from the cluster centre, more at the rim.
       const lean = (r / Math.max(spec.spread, 1e-3)) * 0.45 + random() * 0.12

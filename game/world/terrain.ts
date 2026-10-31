@@ -16,7 +16,11 @@ import {
   TERRAIN_HALF,
   TERRAIN_SAMPLES,
   TRAILS,
+  UNDERVAULT,
+  UNDERVAULT_FLOOR,
   VALE,
+  VAULT,
+  vaultLocal,
   WORKS,
 } from './layout'
 import { fbm, lerp, noise, ridged, smoothstep as ss } from './noise'
@@ -51,6 +55,11 @@ function rimRadius(theta: number): number {
 const spireHill = (r: number): number =>
   SPIRE.height * ss(0.08, 0.92, (SPIRE.footRadius - r) / (SPIRE.footRadius - SPIRE.topRadius))
 
+/** Width of the Undervault pit's slope back up to the plateau (it lies under the vault walls). */
+const PIT_BAND = 1.7
+const PIT_REACH = (VAULT.halfWidth + PIT_BAND) * Math.SQRT2
+const pitLocal = { x: 0, z: 0 }
+
 function flattenPad(h: number, x: number, z: number, px: number): number {
   const d = Math.hypot(x - px, z - BRIDGE.z)
   if (d >= BRIDGE.padRadius + 4) return h
@@ -77,6 +86,14 @@ export function sampleTerrain(x: number, z: number, out: TerrainSample = scratch
   const dw = Math.hypot(x - WORKS.x, z - WORKS.z) / WORKS.radius
   h = lerp(h, WORKS.height + 0.25 * noise(x / 7, z / 7) * ss(0.55, 0.8, dw), 1 - ss(0.82, 1.2, dw))
   const ash = (1 - ss(0.7, 1.45, dw)) * (0.75 + 0.25 * noise(x / 11 + 9, z / 11))
+
+  // The Undervault pit inside the vault house. The chamber's floor, stair and lining are colliders standing in it;
+  // the 2 m heightmap climbs back to the plateau under the vault walls, out of sight (structures/undervault.ts).
+  if (Math.abs(x - UNDERVAULT.x) < PIT_REACH && Math.abs(z - UNDERVAULT.z) < PIT_REACH) {
+    const local = vaultLocal(x, z, pitLocal)
+    const pit = 1 - ss(VAULT.halfWidth, VAULT.halfWidth + PIT_BAND, Math.max(Math.abs(local.x), Math.abs(local.z)))
+    if (pit > 0) h = lerp(h, UNDERVAULT_FLOOR - 2.5, pit)
+  }
 
   // Drowned Bell crater (bowl + raised lip).
   const db = Math.hypot(x - DROWNED_BELL.x, z - DROWNED_BELL.z) / DROWNED_BELL.radius

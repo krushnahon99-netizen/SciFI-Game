@@ -13,6 +13,7 @@ import { buildBridge, type GlassBridge } from './structures/bridge'
 import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
 import { buildHall, type Hall } from './structures/hall'
+import { buildUndervault, type Undervault } from './structures/undervault'
 import { buildVale } from './structures/vale'
 import { buildWorks, type ConduitWorks } from './structures/works'
 import { Terrain } from './terrain'
@@ -35,6 +36,8 @@ export class World {
   readonly bridge: GlassBridge
   /** Conduit Works handles (grid nodes, core, vault door) for the Dormant Grid. */
   readonly works: ConduitWorks
+  /** Undervault handles (the Heart Key on its shrine) for the pickup. */
+  readonly undervault: Undervault
 
   private readonly scatter: Scatter
   private readonly particles: AmbientParticles
@@ -84,6 +87,7 @@ export class World {
     buildVale(context)
     this.bridge = buildBridge(context)
     this.works = buildWorks(context)
+    this.undervault = buildUndervault(context)
     this.scatter = new Scatter(this.terrain, this.collision)
     this.particles = new AmbientParticles()
     scene.add(this.scatter.root, this.particles.points)
