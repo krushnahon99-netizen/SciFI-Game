@@ -57,16 +57,29 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     crew, 2 crystal clusters. Shared: `Batch` moved to `world/geometry.ts`, `createMetalMaterial()`, plateau dead-flat
     out to r 26. Recovered the previous chat's partial edits from `553768f` (`v0/echo-a-m3b-bridge`).
     Browser-verified: layout, pulse (past state, arcs, ghosts), nodes + core lit, door sinks and its collider turns off.
+  - [x] M3b-3 Undervault: `world/structures/undervault.ts` `buildUndervault()` returns `Undervault { key: HeartKey
+    (position, taken, take() hides the core, darkens the shrine and the chamber glow) }`, kept as `World.undervault`.
+    Chamber sunk 6 m (`UNDERVAULT_FLOOR`) inside the vault walls: landing inside the door, grand stair (0.3 m risers,
+    0.45 m treads) between stepped parapets, lining whose top is a ledge at door level, shrine at the back (stepped
+    dais, pedestal, floating Heart Key + 2 rings, glyph wheel), obelisks, crystal clusters (`CrystalCluster` got
+    `baseY`). Echoes: `PastStateOverlay` + a `GhostScene`. **Terrain hole** instead of a heightmap carve (a 2 m carve
+    left a trench outside the walls): layout `UNDERVAULT_HOLE` / `inUndervaultHole()` / `vaultLocal()` /
+    `VAULT_THRESHOLD`; `Terrain.heightAt` returns `UNDERVAULT_HOLE.ground` inside, and the one chunk overlapping it uses
+    `createTerrainMaterial(true)` (fragment discard), so the chamber's colliders carry the player. The pit is in baked
+    terrain shadow, so the chamber shaders add their own fill (`CHAMBER_GLOW`, `uUndervaultHeart`: Heart glow +
+    skylight; no real light). Physics: `resolveCharacter` lets boxes whose top is within step reach be stepped onto
+    (stairs work), and `Player.onCollider` (standing on a collider top, or terrain flush under it) skips the steep-slope
+    slide, which fixed the player sticking at the door sill. Undervault spawn moved onto the landing; the r 9 region
+    circle already fits inside the walls. Partial edits recovered from two auto-commits (`d7ac0ed`, `0b1f7c4`).
+    Browser-verified: stair down/up, shrine readable, walk out through the open door onto the hub without sticking.
 - [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
 - [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
 
 ## Next steps
 
 1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3b structures (M3b-1 Glass Bridge and M3b-2 Conduit Works are done): **M3b-3 Undervault** next: a sunken chamber
-   inside the vault walls (carve a pit in `sampleTerrain()` inside `VAULT`, stairs down from the door, Heart Key
-   pedestal), then fix the `undervault` volume and spawn in `layout.ts` (now: circle r 9 and a point 7 m inside the
-   door). Then M3b-4 Listening Spire (ramp top, energy barrier).
+2. M3b structures (M3b-1 Glass Bridge, M3b-2 Conduit Works, M3b-3 Undervault are done): **M3b-4 Listening Spire**
+   next (ramp top, energy barrier that the Heart Key opens), then the remaining gates.
 3. M3c: the Glass Bridge puzzle only needs `World.bridge` (crossing while solid → `stabilize()` + `puzzleSolved`).
    Dormant Grid: on each `pulse`, charge `World.works.nodes` within range of the origin (~12 m), decay over ~15 s,
    all three charged → `works.setPower(1)` + `works.door.open()` + `puzzleSolved`; on load `door.open(true)`.
@@ -83,3 +96,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3a-4-save | 2026-10-30 | Next session: the M3a-4 chat (EVt1YlLaLFM) had pushed only to `v0/check-saved-content-7c6445ae` because B's merge reached `main` first. Merged it (Game.ts / hud.tsx: kept both sides), region title now uses B's `REGIONS`, answered B in §6 (AGREED) and §7, typed B's audio hooks in `events.ts`. |
 | M3b-1 | 2026-10-31 | Recovered the Glass Bridge from orphan `d402724` and merged it with B's M4/M5a-1 (Game.ts: kept B's avatar line + A's fall check; `respawn` event). tsc clean, browser-verified. |
 | M3b-2 | 2026-10-31 | Chat UZLjCTVV9He ran out of credits mid-step (partial edits auto-committed as `553768f`, off `main`). Next chat: wrote `works.ts` (hub, grid nodes, towers, tanks, vault house + sinking door, echoes), `World.works`, toned down metal rust. tsc clean, browser-verified. |
+| M3b-3 | 2026-10-31 | Two chats (uyj6eVOtBnp, Y2KvllYEyFb) ran out mid-step; their auto-commits `d7ac0ed` + `0b1f7c4` held the whole Undervault (chamber, Heart Key, terrain hole, chamber glow, step-up + `onCollider` physics). Next chat verified the door walk-out fix and saved it. tsc clean, browser-verified. |
