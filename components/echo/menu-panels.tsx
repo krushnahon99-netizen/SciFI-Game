@@ -32,6 +32,7 @@ const CHOICE_OFF = 'border-border text-foreground/80 hover:border-foreground/30 
 export function SettingsPanel() {
   const game = useGame()
   const quality = useUI((state) => state.quality)
+  const auto = useUI((state) => state.qualityAuto)
   const renderScale = useUI((state) => state.renderScale)
   const volume = useUI((state) => state.volume)
   const muted = useUI((state) => state.muted)
@@ -71,9 +72,19 @@ export function SettingsPanel() {
 
       <fieldset>
         <legend className={LEGEND}>{SETTINGS_TEXT.graphics}</legend>
-        <div role="radiogroup" aria-label={SETTINGS_TEXT.graphics} className="mt-2 grid grid-cols-4 gap-1.5">
+        <div role="radiogroup" aria-label={SETTINGS_TEXT.graphics} className="mt-2 grid grid-cols-5 gap-1.5">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={auto}
+            title={SETTINGS_TEXT.autoNote}
+            onClick={() => game?.setAutoQuality()}
+            className={cn(CHOICE, 'px-2 py-2 text-xs', auto ? CHOICE_ON : CHOICE_OFF)}
+          >
+            {SETTINGS_TEXT.auto}
+          </button>
           {QUALITY_LEVELS.map((level) => {
-            const selected = quality === level
+            const selected = !auto && quality === level
             return (
               <button
                 key={level}
@@ -81,9 +92,14 @@ export function SettingsPanel() {
                 role="radio"
                 aria-checked={selected}
                 onClick={() => game?.setQuality(level)}
-                className={cn(CHOICE, 'px-2 py-2 text-xs', selected ? CHOICE_ON : CHOICE_OFF)}
-              >
-                {QUALITY_PRESETS[level].label}
+                      className={cn(
+                        CHOICE,
+                        'px-2 py-2 text-xs',
+                        selected ? CHOICE_ON : CHOICE_OFF,
+                        auto && quality === level && 'border-dashed border-primary/60',
+                      )}
+                    >
+                      {QUALITY_PRESETS[level].label}
               </button>
             )
           })}

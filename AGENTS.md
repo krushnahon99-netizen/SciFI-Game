@@ -148,7 +148,7 @@ Sub-milestones are sized to cost ~$1–1.5 each (about 2–3 per $5 account). Sa
 - [ ] **M4** Procedural audio (`audio/audio.ts`): drones, wind, crystal resonance, pulse, UI/puzzle cues, footsteps, volume + mute.
 - **M5 — UI**
   - [ ] **M5a** Title/continue, skippable intro cinematic, pause menu (journal / settings / controls), end screen.
-  - [ ] **M5b** Touch controls, perf overlay (F3), auto-quality.
+  - [x] **M5b** Touch controls, perf overlay (F3), auto-quality (details: `docs/lane-b.md`).
 - [ ] **M6** Optimization, browser testing, README checklist (implemented / tested / untested), known limitations.
 
 ## 4. Next steps (ordered — start at the top)

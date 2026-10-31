@@ -15,7 +15,7 @@ import { Avatar } from '../player/avatar'
 import { CameraRig } from '../player/camera'
 import { Player } from '../player/player'
 import { Spectator } from '../player/spectator'
-import { QUALITY_PRESETS, type QualityLevel, type QualitySettings } from '../render/quality'
+import { detectDefaultQuality, QUALITY_PRESETS, type QualityLevel, type QualitySettings } from '../render/quality'
 import { RenderSystem, disposeObject3D } from '../render/renderer'
 import { uiStore } from '../ui/store'
 import { FALL_LIMIT, REGION_SPAWNS, SPAWN } from '../world/layout'
@@ -23,6 +23,7 @@ import { World } from '../world/world'
 import { Emitter, type GameEvents, type GamePhase } from './events'
 import { Input } from './input'
 import { loadSettings, saveSettings, type Settings } from './settings'
+import { AutoQuality, STALL_SECONDS } from '../render/autoQuality'
 
 const MAX_FRAME_DT = 0.1
 const PERF_SAMPLE_SECONDS = 0.5
@@ -76,6 +77,7 @@ export class Game {
   private time = 0
   private lastFrameTime = -1
   private readonly perfSample = { frames: 0, seconds: 0, cpuMs: 0 }
+  private readonly autoQuality = new AutoQuality()
   private disposed = false
 
   constructor(container: HTMLElement) {
@@ -96,6 +98,7 @@ export class Game {
       uiStore.setState({ fatalError: 'The graphics context was lost. Reload the page to continue.' })
     }
     this.renderSystem.resize()
+    uiStore.setState({ qualityAuto: !this.settings.qualityExplicit })
 
     this.input = new Input(this.renderSystem.canvas, this.events)
     this.progression = new Progression(this.events)
@@ -245,6 +248,14 @@ export class Game {
     this.applyQuality()
   }
 
+  /** "Auto": back to the detected preset (Low on a software GPU), stepped down while playing if FPS stays low. */
+  setAutoQuality() {
+    this.settings.qualityExplicit = false
+    this.settings.quality = this.renderSystem.gpu.software ? 'low' : detectDefaultQuality()
+    this.autoQuality.reset()
+    this.applyQuality()
+  }
+
   setRenderScale(scale: number) {
     this.settings.renderScale = THREE.MathUtils.clamp(scale, 0.5, 1)
     this.applyQuality()
@@ -294,6 +305,7 @@ export class Game {
     this.phase = next
     this.phaseChangedAt = performance.now()
     this.input.lockOnClick = next === 'playing'
+    if (next === 'playing') this.autoQuality.reset()
     uiStore.setState({ phase: next })
     this.events.emit('phase', { from, to: next })
   }
@@ -330,7 +342,11 @@ export class Game {
     this.camera.far = quality.viewDistance
     this.camera.updateProjectionMatrix()
     saveSettings(this.settings)
-    uiStore.setState({ quality: quality.level, renderScale: this.settings.renderScale })
+    uiStore.setState({
+      quality: quality.level,
+      qualityAuto: !this.settings.qualityExplicit,
+      renderScale: this.settings.renderScale,
+    })
     this.events.emit('quality', { level: quality.level })
   }
 
@@ -343,7 +359,9 @@ export class Game {
 
   private readonly frame = (now: number) => {
     if (this.disposed) return
-    const dt = this.lastFrameTime < 0 ? 1 / 60 : Math.min((now - this.lastFrameTime) / 1000, MAX_FRAME_DT)
+    // Simulation steps are capped; perf stats and auto quality need the real (uncapped) frame time.
+    const elapsed = this.lastFrameTime < 0 ? 1 / 60 : (now - this.lastFrameTime) / 1000
+    const dt = Math.min(elapsed, MAX_FRAME_DT)
     this.lastFrameTime = now
     const cpuStart = performance.now()
 
@@ -351,7 +369,14 @@ export class Game {
     this.renderSystem.render(this.scene, this.camera)
     this.input.endFrame()
 
-    this.samplePerf(dt, performance.now() - cpuStart)
+    this.samplePerf(elapsed, performance.now() - cpuStart)
+    if (this.phase === 'playing' && !this.settings.qualityExplicit) {
+      const lower = this.autoQuality.sample(elapsed, this.settings.quality)
+      if (lower) {
+        this.settings.quality = lower
+        this.applyQuality()
+      }
+    }
   }
 
   private update(dt: number) {
@@ -451,10 +476,12 @@ export class Game {
     }
   }
 
-  private samplePerf(dt: number, cpuMs: number) {
+  private samplePerf(frameSeconds: number, cpuMs: number) {
+    // A hidden tab or a stall is not a frame the readout should average in.
+    if (frameSeconds > STALL_SECONDS) return
     const sample = this.perfSample
     sample.frames++
-    sample.seconds += dt
+    sample.seconds += frameSeconds
     sample.cpuMs += cpuMs
     if (sample.seconds < PERF_SAMPLE_SECONDS) return
     const info = this.renderSystem.renderer.info

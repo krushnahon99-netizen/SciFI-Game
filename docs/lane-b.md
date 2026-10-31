@@ -10,7 +10,7 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
 - [x] M4 Procedural audio (`audio/*.ts`), volume + mute, A's four audio hooks
 - [x] M5a Title/continue, intro cinematic, pause menu (journal / settings / controls), end screen
       (M5a-1 by Chat B; M5a-3 and M5a-2 by Chat A)
-- [ ] M5b Touch controls, perf overlay, auto-quality (M5b-1 touch controls done; next M5b-2)
+- [x] M5b Touch controls (M5b-1), auto-quality + perf overlay polish (M5b-2)
 - [ ] M6 prep (README checklist, known limitations)
 
 ## As built (read before touching Lane B code)
@@ -91,6 +91,18 @@ Written by Chat B only. Plan and rules: `docs/coordination.md`.
   Testing: agent-browser's `set device` gives no coarse pointer; `window.dispatchEvent(new PointerEvent('pointerdown',
   { pointerType: 'touch' }))` switches the UI to touch mode, and synthetic touch `PointerEvent`s on the zones /
   buttons drive it. Its real clicks land offset under device emulation (use `element.click()` for small buttons).
+- **Auto quality + perf overlay** (M5b-2). `game/render/autoQuality.ts` `AutoQuality.sample(frameSeconds, level)`:
+  only while `'playing'` and `!settings.qualityExplicit`; 4 s settle after a start / preset change / resume, then 3 s
+  windows of real frame time; 2 windows in a row under 28 FPS step the preset down one level (never up; Low is the
+  floor); gaps over `STALL_SECONDS` (5 s: hidden tab, dialog) restart the window. It must stay far above real frame
+  times: SwiftShader at High takes ~2 s per frame (a 0.5–1 s cutoff made Auto ignore exactly the devices that need it).
+  `Game.setAutoQuality()` (the **Auto** radio in `SettingsPanel`, `SETTINGS_TEXT.autoNote` as its title) resets to
+  `detectDefaultQuality()` (Low on a software GPU); `uiStore.qualityAuto` (Lane B block) drives the radio; while Auto,
+  the level in use gets a dashed outline. A step-down saves settings, so the next session starts at the lower level.
+  `Game.frame` now passes the real (uncapped) frame time to `samplePerf` (the readout no longer overstates FPS below
+  10); the compact FPS chip shows only while playing (F3 stats in every phase) and the stats say `Quality: Medium · Auto`.
+  Test hook: `__echo.settings.qualityExplicit = false; __echo.settings.quality = 'high'; __echo.applyQuality()` while
+  playing in the headless browser steps to Medium in ~25 s.
 
 ## Save path
 
@@ -105,10 +117,8 @@ write access (as GitHub `tspencer164-5346` had, whose work went to its own repo 
 ## Next steps
 
 0. **Owner, 2026-10-31: no Chat B any more; Chat A does Lane B from here.** M5a is complete.
-1. **M5b-2** next: (b) auto-quality (`SETTINGS_TEXT.auto` exists; step the preset down on sustained low FPS unless the
-   player picked one; an Auto choice in `SettingsPanel`) and (c) perf overlay polish (FPS is computed from the capped
-   dt in `Game.samplePerf`, so it overstates FPS below 10; the FPS chip also shows on the title screen). M5b-1 (touch
-   controls) is done.
+1. **M5b is done** (M5b-1 touch controls, M5b-2 auto-quality + perf overlay). Optional polish, only if cheap: touch
+   users can't open the F3 stats (no key; a tap on the FPS chip could toggle them); touch pinch-to-zoom for the camera.
 2. Then M6 (README checklist, known limitations; fold lane files back into AGENTS.md, end parallel mode).
 4. Not testable yet: footsteps / land / puzzle / discovery cues fire only once Lane A emits those events (M3c / M3d);
    the M4 check fired them by hand through `__echo.events.emit(...)`.
@@ -128,3 +138,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M5a-3 | 2026-10-31 | Chat A (no Chat B any more): end screen (`end-screen.tsx`: staged reveal, stats, inert-until-visible buttons), `Game.returnToTitle()`, `Finale.running`, shared `menu.ts`. tsc clean; browser-verified at 1280×800 (finale → ending, Return to title → Continue, Keep exploring → playing). |
 | M5a-2 | 2026-10-31 | Chat A: pause menu tabs (`menu-panels.tsx`: journal / settings / controls), Return to title, `J` journal toggle (`uiStore.menuTab`), title Settings / Controls panels. M5a complete. tsc clean; browser-verified (journal hints + entries, tabs, J open / switch / resume, title settings at 432×632). |
 | M5b-1 | 2026-10-31 | Lane B by a single chat (no Chat A / B split any more): touch controls (`touch-controls.tsx`: floating joystick with run at full tilt, look pad, Pulse / Jump / Interact / Menu), `useTouchMode()`, touch-aware HUD, no pointer lock after a touch. tsc clean; browser-verified at 390×844 (layout, move axis, run, look delta, jump hold, pulse, Menu → pause). |
+| M5b-2 | 2026-10-31 | Auto graphics quality (`render/autoQuality.ts`, Auto radio, `qualityAuto`), real frame time for perf stats, FPS chip only while playing, `· Auto` in the F3 stats. tsc clean; browser-verified (High → Medium → Low on SwiftShader while Auto; settings panel at 432×632). Found and fixed: a 0.5 s stall cutoff made Auto ignore 2 s software frames. |

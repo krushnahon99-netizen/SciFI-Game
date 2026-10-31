@@ -42,6 +42,8 @@ export interface UIState {
   cinematic: boolean
 
   // --- Lane B fields ---
+  /** The graphics preset follows measured FPS (no explicit pick); see render/autoQuality.ts. */
+  qualityAuto: boolean
   /** Saved progress for the objective, journal and end screen (gameplay/progression.ts); null before boot. */
   progress: ProgressSnapshot | null
   /** Discovery notices, oldest first; the HUD removes each one after showing it. */
@@ -112,6 +114,7 @@ export const uiStore = createStore<UIState>({
   cinematic: false,
 
   // --- Lane B ---
+  qualityAuto: false,
   progress: null,
   notices: [],
   volume: 0.8,

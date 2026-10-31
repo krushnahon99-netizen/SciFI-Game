@@ -335,6 +335,7 @@ export const SETTINGS_TEXT = {
   graphics: 'Graphics quality',
   renderScale: 'Render scale',
   auto: 'Auto',
+  autoNote: 'Starts from your device and lowers detail if the frame rate stays low (dashed: the level in use).',
 } as const
 
 /** On-screen touch controls (accessible names). */
