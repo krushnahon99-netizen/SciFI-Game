@@ -197,6 +197,9 @@ export const CHASM = {
 /** Glass Bridge across the chasm; flat pads at x ± halfSpan. */
 export const BRIDGE = { x: 26, z: -38, halfSpan: 18, padHeight: 4, padRadius: 5 }
 
+/** Falling below this (deep in the chasm) respawns the player at the current region's spawn. */
+export const FALL_LIMIT = CHASM.floor + 24
+
 export const WORKS = { x: 150, z: -150, radius: 48, height: 9 }
 export const UNDERVAULT = { x: 176, z: -178 }
 

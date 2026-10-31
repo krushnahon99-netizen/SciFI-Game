@@ -12,7 +12,7 @@ import { Spectator } from '../player/spectator'
 import { QUALITY_PRESETS, type QualityLevel, type QualitySettings } from '../render/quality'
 import { RenderSystem, disposeObject3D } from '../render/renderer'
 import { uiStore } from '../ui/store'
-import { SPAWN } from '../world/layout'
+import { FALL_LIMIT, REGION_SPAWNS, SPAWN } from '../world/layout'
 import { World } from '../world/world'
 import { Emitter, type GameEvents, type GamePhase } from './events'
 import { Input } from './input'
@@ -301,6 +301,7 @@ export class Game {
       } else if (live) {
         this.player.update(dt, null, this.cameraRig.yaw)
       }
+      if (playing && this.player.position.y < FALL_LIMIT) this.respawn()
       this.avatar.update(this.phase === 'paused' ? 0 : dt, this.player, this.time)
       this.cameraRig.update(dt, this.player.position)
       if (playing) this.regions.update(this.player.position)
@@ -308,6 +309,15 @@ export class Game {
     const focus = this.spectator ? this.camera.position : this.player.position
     this.world.update(dt, this.time, focus, this.camera.position)
     this.audio.update(dt, this.camera)
+  }
+
+  /** Fell into the chasm: back to the current region's spawn point, camera facing on. */
+  private respawn() {
+    const region = this.regions.current ?? 'cradle'
+    const spawn = REGION_SPAWNS[region]
+    this.player.teleport(spawn.x, spawn.z, spawn.yaw)
+    this.cameraRig.yaw = spawn.yaw
+    this.events.emit('respawn', { region })
   }
 
   /** Q / click: pulse from the explorer's backpack core (from the camera while free-flying). */

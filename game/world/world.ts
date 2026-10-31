@@ -9,6 +9,7 @@ import { createMountains } from './mountains'
 import { AmbientParticles } from './particles'
 import { Scatter } from './scatter'
 import { createSky } from './sky'
+import { buildBridge, type GlassBridge } from './structures/bridge'
 import type { Animator, StructureContext } from './structures/context'
 import { buildCradle } from './structures/cradle'
 import { buildHall, type Hall } from './structures/hall'
@@ -29,6 +30,8 @@ export class World {
   readonly collision: Collision
   /** Hall of Echoes handles (altar, glyph pillars, gate) for the Choir Sequence. */
   readonly hall: Hall
+  /** Glass Bridge handles (phase planks, span ends) for the Glass Bridge puzzle. */
+  readonly bridge: GlassBridge
 
   private readonly scatter: Scatter
   private readonly particles: AmbientParticles
@@ -76,6 +79,7 @@ export class World {
     buildCradle(context)
     this.hall = buildHall(context)
     buildVale(context)
+    this.bridge = buildBridge(context)
     this.scatter = new Scatter(this.terrain, this.collision)
     this.particles = new AmbientParticles()
     scene.add(this.scatter.root, this.particles.points)

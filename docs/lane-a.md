@@ -35,16 +35,26 @@ Written by Chat A only. Plan and rules: `docs/coordination.md`. Engine notes: AG
     (`gameplay/content.ts`).
   - Browser-verified: Cradle title at start, Hall title on teleport, a gap keeps Hall, then Vale (log `hall, vale`).
 - [ ] M3b Structures: Glass Bridge chasm, Conduit Works, Undervault, Listening Spire, gates
+  - [x] M3b-1 Glass Bridge chasm: `world/structures/bridge.ts` `buildBridge()` returns `GlassBridge { planks (10
+    `PhaseObject`s, west → east), west, east (pier-tip x), stable, stabilize() }`, kept as `World.bridge` for M3c.
+    `findRim()` marches the heightmap to the cliff edge; per rim an octagonal dais, a gate block with two glyph pylons
+    (west intact with lintel + bobbing beacon, east snapped, its crown lying on the dais) and a pier jutting 2.6 m over
+    the void on a buttress. The span arches 0.8 m (`deckAt()`); each plank + glass fins is its own phase object, so the
+    wavefront reveals them in order. Two broken depth columns, ghost pilgrims stepping onto the span, 2 crystal clusters.
+    Respawn: below `FALL_LIMIT` (layout) `Game.respawn()` teleports to `REGION_SPAWNS[regions.current]` and emits
+    `respawn`. Recovered from the M3b chat's auto-commit `d402724` (`v0/echo-a-m3b`, never on `main`); its extra
+    `playerRespawn` event was replaced by the existing `respawn`. Browser-verified: reveal order, standing mid-span
+    (y 5.14), fall → respawn on the west landing.
 - [ ] M3c Puzzles: Choir Sequence, Glass Bridge, Dormant Grid
 - [ ] M3d world side: fragments, secrets, Heart Key placement, respawn, finale
 
 ## Next steps
 
 1. Check coordination §6/§7 for B's reply or requests after every pull; answer once if needed.
-2. M3b structures, one sub-milestone each: Glass Bridge chasm (pads, phase planks), Conduit Works (facility + door
-   gate), Undervault (sunken chamber; then fix its volume and spawn in `layout.ts`), Listening Spire (ramp top, energy
-   barrier).
-3. Later (M3d): respawn on fall / void = `player.teleport()` to `REGION_SPAWNS[regions.current]`.
+2. M3b structures, one sub-milestone each (M3b-1 Glass Bridge is done): M3b-2 Conduit Works (facility, 3 power-node
+   plinths for the Dormant Grid, sealed door gate), M3b-3 Undervault (sunken chamber; then fix its volume and spawn in
+   `layout.ts`), M3b-4 Listening Spire (ramp top, energy barrier).
+3. M3c: the Glass Bridge puzzle only needs `World.bridge` (crossing while solid → `stabilize()` + `puzzleSolved`).
 
 If you stop mid-step, write here exactly what is unfinished (file, function, what is left).
 
@@ -56,3 +66,4 @@ If you stop mid-step, write here exactly what is unfinished (file, function, wha
 | M3a-3 | 2026-10-30 | Singing Vale (Choir, ribs, formations, echoes), world scatter, ambient particles; phase expiry verified. tsc clean, browser-verified. B had not replied in §6 yet. |
 | M3a-4 | 2026-10-30 | Region volumes + spawn points (`layout.ts`), `RegionTracker` (`regionEnter`, `uiStore.region`), HUD region title. tsc clean, browser-verified. Still no reply from B in §6. |
 | M3a-4-save | 2026-10-30 | Next session: the M3a-4 chat (EVt1YlLaLFM) had pushed only to `v0/check-saved-content-7c6445ae` because B's merge reached `main` first. Merged it (Game.ts / hud.tsx: kept both sides), region title now uses B's `REGIONS`, answered B in §6 (AGREED) and §7, typed B's audio hooks in `events.ts`. |
+| M3b-1 | 2026-10-31 | Recovered the Glass Bridge from orphan `d402724` and merged it with B's M4/M5a-1 (Game.ts: kept B's avatar line + A's fall check; `respawn` event). tsc clean, browser-verified. |

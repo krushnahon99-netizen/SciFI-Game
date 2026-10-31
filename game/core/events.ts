@@ -33,6 +33,7 @@ export interface GameEvents {
   fragmentFound: { id: FragmentId }
   secretFound: { id: SecretId }
   itemFound: { id: ItemId }
+  /** The player fell below `FALL_LIMIT` and was put back at the spawn point of `region` (the current one). */
   respawn: { region: RegionId }
   /** The finale pulse has finished; Game.ts switches to the 'ending' phase. */
   endingStart: Record<string, never>
