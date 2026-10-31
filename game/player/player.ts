@@ -20,6 +20,8 @@ const SLIDE_ACCEL = 16
 /** Keeps the player glued to the ground when walking down slopes and over small bumps. */
 const GROUND_SNAP = 0.5
 const STEP_UP = 0.45
+/** Collider tops this close below the terrain still count as what the player stands on. */
+const FLUSH = 0.05
 const TURN_RATE = 12
 
 const approach = (value: number, target: number, maxDelta: number) =>
@@ -50,6 +52,8 @@ export class Player {
 
   private coyote = 0
   private jumpBuffer = 0
+  /** Stood on a collider top (not the terrain) last frame: steep terrain under it doesn't block the move. */
+  private onCollider = false
   private readonly normal = new THREE.Vector3(0, 1, 0)
 
   constructor(
@@ -66,7 +70,10 @@ export class Player {
 
   /** Feet on the ground, or on the collider top under (x, z) when there is one (e.g. the Undervault landing). */
   teleport(x: number, z: number, yaw = this.facing) {
-    this.position.set(x, Math.max(this.collision.groundHeight(x, z), this.collision.topAt(x, z)), z)
+    const ground = this.collision.groundHeight(x, z)
+    const top = this.collision.topAt(x, z)
+    this.position.set(x, Math.max(ground, top), z)
+    this.onCollider = top >= ground - FLUSH
     this.velocity.set(0, 0, 0)
     this.facing = yaw
     this.grounded = true
@@ -132,15 +139,17 @@ export class Player {
 
     v.y = Math.max(v.y - GRAVITY * dt, -MAX_FALL_SPEED)
     const oldX = p.x
+    const oldY = p.y
     const oldZ = p.z
     p.x += v.x * dt
     p.z += v.z * dt
     p.y += v.y * dt
 
-    // Steep terrain blocks uphill motion: remove the uphill part of this frame's move.
+    // Steep terrain blocks uphill motion: remove the uphill part of this frame's move. Not while a collider top carries
+    // the player (e.g. the Undervault threshold, where the terrain hole is a cliff in the ground normal).
     const terrainNormal = this.collision.groundNormal(p.x, p.z, this.normal)
     const terrainHere = this.collision.groundHeight(p.x, p.z)
-    if (terrainNormal.y < MAX_SLOPE_COS && p.y <= terrainHere + GROUND_SNAP) {
+    if (!this.onCollider && terrainNormal.y < MAX_SLOPE_COS && p.y <= terrainHere + GROUND_SNAP) {
       const h = Math.hypot(terrainNormal.x, terrainNormal.z) || 1
       const ux = -terrainNormal.x / h
       const uz = -terrainNormal.z / h
@@ -156,7 +165,10 @@ export class Player {
       }
     }
 
-    const support = this.collision.resolveCharacter(p, PLAYER_RADIUS, PLAYER_HEIGHT, STEP_UP)
+    // Steps are measured from where the feet were: at low frame rates one frame of gravity sag (g·dt², 0.2 m at
+    // 10 FPS) would otherwise turn a walkable step into a wall. Tops within GROUND_SNAP below count, so stairs snap.
+    const sag = this.grounded ? Math.max(0, oldY - p.y) : 0
+    const support = this.collision.resolveCharacter(p, PLAYER_RADIUS, PLAYER_HEIGHT, STEP_UP + sag, GROUND_SNAP)
     const terrain = this.collision.groundHeight(p.x, p.z)
     const groundY = Math.max(terrain, support)
     const snap = this.grounded && v.y <= 0 ? GROUND_SNAP : 0
@@ -175,8 +187,10 @@ export class Player {
       this.grounded = false
     }
 
+    // A collider top flush with the terrain (within FLUSH) still carries the player: no terrain slope, no sliding.
+    const onTop = support >= terrain - FLUSH
     if (this.grounded) {
-      if (support >= terrain) {
+      if (onTop) {
         this.normal.set(0, 1, 0)
         this.steep = false
       } else {
@@ -189,6 +203,7 @@ export class Player {
       this.coyote = Math.max(0, this.coyote - dt)
       this.airTime += dt
     }
+    this.onCollider = this.grounded && onTop
 
     // Turn toward the movement direction.
     const previousFacing = this.facing

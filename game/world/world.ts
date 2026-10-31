@@ -72,7 +72,7 @@ export class World {
     this.terrain = new Terrain()
     sharedUniforms.uTerrainShadow.value = this.terrain.shadowTexture
     sharedUniforms.uTerrainSplat.value = this.terrain.splatTexture
-    this.terrain.createMeshes(createTerrainMaterial())
+    this.terrain.createMeshes(createTerrainMaterial(), createTerrainMaterial(true))
     this.collision = new Collision((x, z) => this.terrain.heightAt(x, z))
     scene.add(this.terrain.root, createMountains(this.terrain), createSky(fog.color))
 

@@ -166,7 +166,7 @@ export function buildWorks(context: StructureContext): ConduitWorks {
     power: createEnergyMaterial(AMBER, DORMANT),
   }
   const floor = collision.groundHeight(WORKS.x, WORKS.z)
-  // Measured outside the door: the Undervault pit is carved under the door itself.
+  // Measured outside the door: the Undervault's terrain hole reaches under the door itself.
   const threshold = VAULT_THRESHOLD
   const vaultBase = collision.groundHeight(threshold.x, threshold.z)
   const state = { power: 0 }
@@ -438,7 +438,7 @@ function buildVault({ scene, collision, animate }: StructureContext, m: Material
   const outer = halfWidth + wall
   const front = halfDepth + wall / 2
   const top = base + height
-  // Down past the Undervault floor: the pit's edge is carved under the walls.
+  // Down past the Undervault floor: the terrain hole's edge runs under the walls.
   const footing = UNDERVAULT_FLOOR - 1
 
   const group = new THREE.Group()

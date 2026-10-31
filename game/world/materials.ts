@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { patchWorldMaterial, type WorldMaterialPatch } from '../render/shaderChunks'
+import { UNDERVAULT, UNDERVAULT_HOLE, VAULT } from './layout'
 import { fbmTile, ridgedTile, worleyTile } from './noise'
 
 const NOISE_SIZE = 256
@@ -64,12 +65,24 @@ const TERRAIN_COLOR = /* glsl */ `
   float echoRough = mix(0.97, 0.86, tRockMask) - 0.05 * tTrail;
 `
 
-export function createTerrainMaterial(): THREE.MeshStandardMaterial {
+/** Discards the Undervault's terrain hole (layout `UNDERVAULT_HOLE`): same vault-local square test as `inUndervaultHole`. */
+const TERRAIN_HOLE = (() => {
+  const s = Math.sin(VAULT.yaw).toFixed(6)
+  const c = Math.cos(VAULT.yaw).toFixed(6)
+  return /* glsl */ `
+  vec2 tHole = vWorldPos.xz - vec2(${UNDERVAULT.x.toFixed(3)}, ${UNDERVAULT.z.toFixed(3)});
+  tHole = vec2(tHole.x * (${c}) - tHole.y * (${s}), tHole.x * (${s}) + tHole.y * (${c}));
+  if (max(abs(tHole.x), abs(tHole.y)) < ${UNDERVAULT_HOLE.half.toFixed(3)}) discard;
+`
+})()
+
+/** `hole`: the variant for the one chunk around the Undervault (a discard everywhere would cost early-z on all terrain). */
+export function createTerrainMaterial(hole = false): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 })
-  material.name = 'echo.terrain'
+  material.name = hole ? 'echo.terrain.hole' : 'echo.terrain'
   return patchWorldMaterial(material, {
-    key: 'terrain',
-    color: TERRAIN_COLOR,
+    key: hole ? 'terrain-hole' : 'terrain',
+    color: hole ? `${TERRAIN_HOLE}${TERRAIN_COLOR}` : TERRAIN_COLOR,
     roughness: 'roughnessFactor = echoRough;',
     normal: 'normal = echoPerturbNormal(-vViewPosition, normal, echoBump);',
   })
@@ -87,8 +100,8 @@ const STONE_COLOR = /* glsl */ `
   float echoBump = sT.a * 0.06 + sT.b * 0.03;
 `
 
-/** Extra vertex-stage hooks for a material variant (e.g. instanced scatter); `key` names the variant's shader. */
-export type MaterialVariant = Pick<WorldMaterialPatch, 'uniforms' | 'vertexPars' | 'vertex' | 'fragmentPars'> & {
+/** Extra hooks for a material variant (e.g. instanced scatter, a local glow); `key` names the variant's shader. */
+export type MaterialVariant = Pick<WorldMaterialPatch, 'uniforms' | 'vertexPars' | 'vertex' | 'fragmentPars' | 'emissive'> & {
   key: string
 }
 
@@ -121,11 +134,15 @@ const METAL_COLOR = /* glsl */ `
 `
 
 /** Alien alloy of the Conduit Works: grime streaks and rust patches over a muted base colour. */
-export function createMetalMaterial(color: THREE.ColorRepresentation = '#626b6c'): THREE.MeshStandardMaterial {
+export function createMetalMaterial(
+  color: THREE.ColorRepresentation = '#626b6c',
+  variant?: MaterialVariant,
+): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.3 })
   material.name = 'echo.metal'
   return patchWorldMaterial(material, {
-    key: 'metal',
+    ...variant,
+    key: variant ? `metal-${variant.key}` : 'metal',
     color: METAL_COLOR,
     roughness: 'roughnessFactor = clamp(mix(roughnessFactor * (0.8 + 0.4 * mT.g), 0.95, echoRust), 0.0, 1.0);',
     normal: 'normal = echoPerturbNormal(-vViewPosition, normal, echoBump);',

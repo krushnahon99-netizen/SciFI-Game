@@ -144,14 +144,14 @@ export class Collision {
 
   /**
    * Pushes a character cylinder (feet at `position.y`) out of collider sides.
-   * Returns the highest collider top it can stand on (within `stepUp` of the feet), or -Infinity.
+   * Returns the highest collider top it can stand on (from `stepUp` above to `stepDown` below the feet), or -Infinity.
    */
-  resolveCharacter(position: THREE.Vector3, radius: number, height: number, stepUp: number): number {
+  resolveCharacter(position: THREE.Vector3, radius: number, height: number, stepUp: number, stepDown = 0.05): number {
     let support = -Infinity
     const nearby = this.gather(position.x, position.z, radius + 1)
     for (let pass = 0; pass < 2; pass++) {
       for (const c of nearby) {
-        if (position.y + height < c.minY || position.y > c.maxY + 0.05) continue
+        if (position.y + height < c.minY || position.y > c.maxY + stepDown) continue
         const hit = probeCollider(c, position.x, position.z)
         const depth = radius - hit.distance
         if (depth <= 0) continue

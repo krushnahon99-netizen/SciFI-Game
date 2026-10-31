@@ -204,9 +204,9 @@ export const WORKS = { x: 150, z: -150, radius: 48, height: 9 }
 
 /**
  * The Undervault's vault house: a roofless walled bunker NE of the Works hub whose sealed door (the Dormant Grid gate)
- * faces the hub; the sunken chamber inside is structures/undervault.ts (terrain.ts carves its pit). Interior
- * half-sizes (the carve assumes a square), wall thickness and height; `yaw` turns the vault's local +z (the door side)
- * toward the hub.
+ * faces the hub; the sunken chamber inside is structures/undervault.ts (in `UNDERVAULT_HOLE`). Interior half-sizes
+ * (the hole assumes a square), wall thickness and height; `yaw` turns the vault's local +z (the door side) toward the
+ * hub.
  */
 export const UNDERVAULT = { x: 170, z: -171 }
 export const VAULT = {
@@ -235,10 +235,30 @@ export function vaultLocal(x: number, z: number, out = { x: 0, z: 0 }): { x: num
   return out
 }
 
-/** Just outside the vault door, clear of the pit carved under it: the door threshold's level is measured here. */
+/** Just outside the vault door, clear of the terrain hole under it: the door threshold's level is measured here. */
 export const VAULT_THRESHOLD = vaultPoint(0, VAULT.halfDepth + VAULT.wall + 1.4)
 /** Floor of the Undervault's sunken chamber (absolute; the plateau around the vault is at WORKS.height). */
 export const UNDERVAULT_FLOOR = WORKS.height - 6
+
+/**
+ * The Undervault's hole in the terrain: the vault-local square out to the walls' centre line. The heightmap stays
+ * uncarved (a 2 m carve left a trench outside the walls and dented the coarse LODs); instead the terrain chunk around
+ * it discards the hole (`createTerrainMaterial(true)`) and `Terrain.heightAt` returns `ground` inside, so the chamber's
+ * floor, stair and lining colliders carry the player.
+ */
+export const UNDERVAULT_HOLE = {
+  half: VAULT.halfWidth + VAULT.wall / 2,
+  reach: (VAULT.halfWidth + VAULT.wall / 2) * Math.SQRT2,
+  ground: UNDERVAULT_FLOOR - 1,
+}
+const holeLocal = { x: 0, z: 0 }
+
+export function inUndervaultHole(x: number, z: number): boolean {
+  const { half, reach } = UNDERVAULT_HOLE
+  if (Math.abs(x - UNDERVAULT.x) > reach || Math.abs(z - UNDERVAULT.z) > reach) return false
+  const p = vaultLocal(x, z, holeLocal)
+  return Math.abs(p.x) < half && Math.abs(p.z) < half
+}
 
 /** Where the Works trail meets the sealed vault door. */
 const VAULT_APPROACH = vaultPoint(0, VAULT.halfDepth + VAULT.wall + 3)

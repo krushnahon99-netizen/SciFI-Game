@@ -4,19 +4,44 @@ import { GhostScene } from '../../echo/ghosts'
 import { PastStateOverlay } from '../../echo/pastState'
 import type { Collision } from '../../physics/collision'
 import { Batch, block, mergeParts } from '../geometry'
-import { type Point2, UNDERVAULT, UNDERVAULT_FLOOR, VAULT, VAULT_THRESHOLD, vaultLocal, vaultPoint } from '../layout'
-import { createEnergyMaterial, createMetalMaterial, createStoneMaterial } from '../materials'
+import {
+  type Point2,
+  UNDERVAULT,
+  UNDERVAULT_FLOOR,
+  UNDERVAULT_HOLE,
+  VAULT,
+  VAULT_THRESHOLD,
+  vaultLocal,
+  vaultPoint,
+} from '../layout'
+import { createEnergyMaterial, createMetalMaterial, createStoneMaterial, type MaterialVariant } from '../materials'
 import type { Animator, StructureContext } from './context'
 
 /** Pale gold of the Heart and its shrine. */
 const HEART = '#ffd9a0'
 const SHRINE_LIT = 1.3
 const SHRINE_DARK = 0.2
+/**
+ * The Heart's light on the chamber plus a little skylight down the shaft (the baked terrain shadow darkens the pit).
+ * Added in the chamber's own shaders: a real point light would cost every material in the scene.
+ */
+const CHAMBER_GLOW = /* glsl */ `
+  vec3 uvHeart = uUndervaultHeart.xyz - vWorldPos;
+  float uvD2 = dot(uvHeart, uvHeart);
+  float uvFacing = 0.4 + 0.6 * max(dot(normalize(vWorldNormal), uvHeart * inversesqrt(uvD2 + 1e-3)), 0.0);
+  vec3 uvHeartLight = vec3(1.0, 0.69, 0.35) * (uUndervaultHeart.w * uvFacing / (1.0 + uvD2 * 0.1));
+  totalEmissiveRadiance += diffuseColor.rgb * (uvHeartLight + vec3(0.12, 0.14, 0.19));
+`
+/** Glow strength (`uUndervaultHeart.w`) while the Heart rests on the pedestal, and once it has been taken. */
+const GLOW_LIT = 2.6
+const GLOW_TAKEN = 0.5
 /** Lining inside the vault walls, from the floor up to door level; its top is a ledge around the pit. */
 const LINING = 0.9
 const INNER = VAULT.halfWidth - LINING
 /** Landing inside the door: local z from `edge` up to the door wall. */
 const LANDING = { halfWidth: 3.2, edge: VAULT.halfDepth - 2.7 }
+/** Local z where the slab through the door ends, out on the plateau. */
+const SILL_END = VAULT.halfDepth + VAULT.wall + 0.6
 /** The stair runs from the landing toward −z between stepped parapets (`rail` above each tread). */
 const STAIR = { halfWidth: 2.2, tread: 0.45, riser: 0.3, parapet: 0.5, rail: 0.85 }
 /** The shrine at the back: dais tiers (radius, top above the floor), the pedestal top, the Heart above it. */
@@ -46,6 +71,8 @@ interface Materials {
 interface Stair {
   /** Door threshold and landing level. */
   base: number
+  /** Top of the slab through the door: a hair above the plateau along its whole length, so it never z-fights it. */
+  sill: number
   floor: number
   riser: number
   steps: number
@@ -76,6 +103,8 @@ export class HeartKey {
     private readonly root: THREE.Object3D,
     private readonly rings: readonly [THREE.Object3D, THREE.Object3D],
     private readonly shrine: THREE.MeshStandardMaterial,
+    /** The chamber's `uUndervaultHeart` (w = glow strength). */
+    private readonly glow: { value: THREE.Vector4 },
   ) {
     this.restY = root.position.y
   }
@@ -89,10 +118,12 @@ export class HeartKey {
     this.held = true
     this.root.visible = false
     this.shrine.emissiveIntensity = SHRINE_DARK
+    this.glow.value.w = GLOW_TAKEN
   }
 
   readonly update: Animator = (dt, time) => {
     if (this.held) return
+    this.glow.value.w = GLOW_LIT * (1 + 0.06 * Math.sin(time * 1.3))
     this.root.position.y = this.restY + Math.sin(time * 1.3) * 0.07
     this.root.rotation.y += dt * 0.5
     this.rings[0].rotation.x += dt * 0.9
@@ -106,26 +137,43 @@ export interface Undervault {
 }
 
 /**
- * The Undervault: a chamber sunk 6 m into the vault house (terrain.ts carves the pit). A landing inside the door, a
- * grand stair between stepped parapets, a lining whose top is a ledge at door level, and the Heart Key's shrine at the
- * back. Built in the vault's local frame (+z = door side); colliders get the same transform through `vaultPoint`.
+ * The Undervault: a chamber sunk 6 m into the vault house (in the terrain hole, layout `UNDERVAULT_HOLE`). A landing
+ * inside the door, a grand stair between stepped parapets, a lining whose top is a ledge at door level, and the Heart
+ * Key's shrine at the back. Built in the vault's local frame (+z = door side); colliders get the same transform through
+ * `vaultPoint`.
  */
 export function buildUndervault(context: StructureContext): Undervault {
   const { scene, collision, reactives, animate } = context
   const base = collision.groundHeight(VAULT_THRESHOLD.x, VAULT_THRESHOLD.z)
   const floor = UNDERVAULT_FLOOR
   const risers = Math.max(2, Math.round((base - floor) / STAIR.riser))
+  let sill = base
+  for (const lz of [UNDERVAULT_HOLE.half + 0.05, SILL_END]) {
+    for (const lx of [-STAIR.halfWidth, 0, STAIR.halfWidth]) {
+      const p = vaultPoint(lx, lz)
+      sill = Math.max(sill, collision.groundHeight(p.x, p.z))
+    }
+  }
   const stair: Stair = {
     base,
+    sill: sill + 0.06,
     floor,
     riser: (base - floor) / risers,
     steps: risers - 1,
     foot: LANDING.edge - (risers - 1) * STAIR.tread,
   }
+  const heartAt = vaultPoint(0, SHRINE_Z)
+  const glow = { value: new THREE.Vector4(heartAt.x, floor + PEDESTAL_TOP + KEY_LIFT, heartAt.z, GLOW_LIT) }
+  const lit: MaterialVariant = {
+    key: 'undervault',
+    uniforms: { uUndervaultHeart: glow },
+    fragmentPars: 'uniform vec4 uUndervaultHeart;',
+    emissive: CHAMBER_GLOW,
+  }
   const m: Materials = {
-    stone: createStoneMaterial('#746c66'),
-    floor: createStoneMaterial('#5d5650'),
-    dark: createMetalMaterial('#3a3f41'),
+    stone: createStoneMaterial('#746c66', lit),
+    floor: createStoneMaterial('#5d5650', lit),
+    dark: createMetalMaterial('#3a3f41', lit),
     shrine: createEnergyMaterial(HEART, SHRINE_LIT),
   }
 
@@ -147,7 +195,7 @@ export function buildUndervault(context: StructureContext): Undervault {
   buildChamber(solid, batch, m, stair)
   buildShrine(collision, batch, m, floor)
   batch.build(group, 'undervault.chamber', m.shrine)
-  const key = buildHeart(group, m.shrine, floor)
+  const key = buildHeart(group, m.shrine, floor, glow)
   animate(key.update)
   scene.add(group)
 
@@ -160,7 +208,7 @@ export function buildUndervault(context: StructureContext): Undervault {
 }
 
 /** Floor slab, lining with its ledge, landing, threshold, the stair and its parapets, glyph bands. */
-function buildChamber(solid: Solid, batch: Batch, m: Materials, { base, floor, riser, steps }: Stair) {
+function buildChamber(solid: Solid, batch: Batch, m: Materials, { base, sill, floor, riser, steps }: Stair) {
   const { halfWidth, halfDepth, wall } = VAULT
   const below = floor - 1
   solid(m.floor, -halfWidth, halfWidth, -halfDepth, halfDepth, below, floor)
@@ -170,8 +218,8 @@ function buildChamber(solid: Solid, batch: Batch, m: Materials, { base, floor, r
     solid(m.stone, side * LANDING.halfWidth, side * halfWidth, INNER, halfDepth, below, base)
   }
   solid(m.stone, -LANDING.halfWidth, LANDING.halfWidth, LANDING.edge, halfDepth, below, base)
-  // Through the door gap and over the pit's carved edge: walkable once the door has sunk into it.
-  solid(m.floor, -STAIR.halfWidth, STAIR.halfWidth, halfDepth, halfDepth + wall + 0.6, below, base)
+  // Through the door gap and over the terrain hole's edge: walkable once the door has sunk into it.
+  solid(m.floor, -STAIR.halfWidth, STAIR.halfWidth, halfDepth, SILL_END, below, sill)
 
   for (let i = 1; i <= steps; i++) {
     const top = base - i * riser
@@ -249,7 +297,12 @@ function buildShrine(collision: Collision, batch: Batch, m: Materials, floor: nu
 }
 
 /** The Heart Key: a gold core inside two tumbling rings, floating over the pedestal. */
-function buildHeart(group: THREE.Group, shrine: THREE.MeshStandardMaterial, floor: number): HeartKey {
+function buildHeart(
+  group: THREE.Group,
+  shrine: THREE.MeshStandardMaterial,
+  floor: number,
+  glow: { value: THREE.Vector4 },
+): HeartKey {
   const material = createEnergyMaterial(HEART, 3.4)
   const y = floor + PEDESTAL_TOP + KEY_LIFT
   const root = new THREE.Group()
@@ -262,7 +315,7 @@ function buildHeart(group: THREE.Group, shrine: THREE.MeshStandardMaterial, floo
   root.add(core, outer, inner)
   group.add(root)
   const at = vaultPoint(0, SHRINE_Z)
-  return new HeartKey(new THREE.Vector3(at.x, y, at.z), root, [outer, inner], shrine)
+  return new HeartKey(new THREE.Vector3(at.x, y, at.z), root, [outer, inner], shrine, glow)
 }
 
 /**

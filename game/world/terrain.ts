@@ -6,6 +6,7 @@ import {
   CRADLE,
   DROWNED_BELL,
   HALL,
+  inUndervaultHole,
   PLANET_NOTCH,
   RIDGE,
   RIM,
@@ -17,10 +18,8 @@ import {
   TERRAIN_SAMPLES,
   TRAILS,
   UNDERVAULT,
-  UNDERVAULT_FLOOR,
+  UNDERVAULT_HOLE,
   VALE,
-  VAULT,
-  vaultLocal,
   WORKS,
 } from './layout'
 import { fbm, lerp, noise, ridged, smoothstep as ss } from './noise'
@@ -55,11 +54,6 @@ function rimRadius(theta: number): number {
 const spireHill = (r: number): number =>
   SPIRE.height * ss(0.08, 0.92, (SPIRE.footRadius - r) / (SPIRE.footRadius - SPIRE.topRadius))
 
-/** Width of the Undervault pit's slope back up to the plateau (it lies under the vault walls). */
-const PIT_BAND = 1.7
-const PIT_REACH = (VAULT.halfWidth + PIT_BAND) * Math.SQRT2
-const pitLocal = { x: 0, z: 0 }
-
 function flattenPad(h: number, x: number, z: number, px: number): number {
   const d = Math.hypot(x - px, z - BRIDGE.z)
   if (d >= BRIDGE.padRadius + 4) return h
@@ -86,14 +80,6 @@ export function sampleTerrain(x: number, z: number, out: TerrainSample = scratch
   const dw = Math.hypot(x - WORKS.x, z - WORKS.z) / WORKS.radius
   h = lerp(h, WORKS.height + 0.25 * noise(x / 7, z / 7) * ss(0.55, 0.8, dw), 1 - ss(0.82, 1.2, dw))
   const ash = (1 - ss(0.7, 1.45, dw)) * (0.75 + 0.25 * noise(x / 11 + 9, z / 11))
-
-  // The Undervault pit inside the vault house. The chamber's floor, stair and lining are colliders standing in it;
-  // the 2 m heightmap climbs back to the plateau under the vault walls, out of sight (structures/undervault.ts).
-  if (Math.abs(x - UNDERVAULT.x) < PIT_REACH && Math.abs(z - UNDERVAULT.z) < PIT_REACH) {
-    const local = vaultLocal(x, z, pitLocal)
-    const pit = 1 - ss(VAULT.halfWidth, VAULT.halfWidth + PIT_BAND, Math.max(Math.abs(local.x), Math.abs(local.z)))
-    if (pit > 0) h = lerp(h, UNDERVAULT_FLOOR - 2.5, pit)
-  }
 
   // Drowned Bell crater (bowl + raised lip).
   const db = Math.hypot(x - DROWNED_BELL.x, z - DROWNED_BELL.z) / DROWNED_BELL.radius
@@ -290,12 +276,22 @@ export class Terrain {
     this.detail = detail
   }
 
-  createMeshes(material: THREE.Material) {
+  /** `holeMaterial` goes on the chunk around the Undervault: it discards the terrain hole (layout `UNDERVAULT_HOLE`). */
+  createMeshes(material: THREE.Material, holeMaterial = material) {
+    const size = CHUNK_CELLS * TERRAIN_CELL
+    const { reach } = UNDERVAULT_HOLE
     for (let cz = 0; cz < CHUNKS; cz++) {
       for (let cx = 0; cx < CHUNKS; cx++) {
         const geometry = this.buildChunkGeometry(cx, cz)
         geometry.setIndex(this.lodIndices[0])
-        const mesh = new THREE.Mesh(geometry, material)
+        const x0 = -TERRAIN_HALF + cx * size
+        const z0 = -TERRAIN_HALF + cz * size
+        const hole =
+          UNDERVAULT.x + reach > x0 &&
+          UNDERVAULT.x - reach < x0 + size &&
+          UNDERVAULT.z + reach > z0 &&
+          UNDERVAULT.z - reach < z0 + size
+        const mesh = new THREE.Mesh(geometry, hole ? holeMaterial : material)
         mesh.name = `terrain.${cx}.${cz}`
         mesh.receiveShadow = true
         mesh.castShadow = false
@@ -326,8 +322,9 @@ export class Terrain {
     }
   }
 
-  /** Ground height at (x, z), using the same triangle split as the full-detail mesh. */
+  /** Ground height at (x, z), using the same triangle split as the full-detail mesh (low inside the Undervault hole). */
   heightAt(x: number, z: number): number {
+    if (inUndervaultHole(x, z)) return UNDERVAULT_HOLE.ground
     const fx = Math.min(Math.max((x + TERRAIN_HALF) / TERRAIN_CELL, 0), N - 1.0001)
     const fz = Math.min(Math.max((z + TERRAIN_HALF) / TERRAIN_CELL, 0), N - 1.0001)
     const i = Math.floor(fx)
